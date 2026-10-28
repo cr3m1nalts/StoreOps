@@ -38,3 +38,7 @@ Sadece Python 3 standart kütüphanesi kullanılır, ek paket yoktur.
 | `test_server.py` | Testler: `python -m unittest test_server` |
 | `baslat.bat` | Python ile çalıştırır |
 | `exe_yap.bat` | `dist\StoreOps.exe`'yi yeniden üretir (`pip install pyinstaller` gerekir) |
+
+## Lisans
+
+[MIT](LICENSE) — dilediğiniz gibi kullanabilir, değiştirebilir ve dağıtabilirsiniz.
