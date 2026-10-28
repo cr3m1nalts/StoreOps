@@ -1,0 +1,11 @@
+# Üretilen dosyalar (.exe Releases sayfasında yayınlanır)
+dist/
+build/
+*.spec
+__pycache__/
+
+# Dükkan verileri ve çalışma dosyaları
+*.db
+*.log
+tarayici/
+.claude/

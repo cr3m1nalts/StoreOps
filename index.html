@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StoreOps</title>
+<style>
+  :root {
+    --zemin: #f1f4f9; --kart: #fff; --yazi: #1e293b; --soluk: #64748b; --cizgi: #e2e8f0;
+    --ana: #2563eb; --ana-acik: #dbeafe; --yesil: #16a34a; --kirmizi: #dc2626; --turuncu: #ea580c;
+    --golge: 0 1px 3px #0f172a14, 0 1px 2px #0f172a0d; --kose: 12px;
+  }
+  * { box-sizing: border-box; }
+  body { overflow-x: clip; font-family: "Segoe UI", system-ui, sans-serif; margin: 0; background: var(--zemin); color: var(--yazi); font-size: 15px; }
+
+  header { background: #0f172a; color: #fff; padding: 0 20px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap; position: sticky; top: 0; z-index: 5; }
+  .logo { font-weight: 700; font-size: 18px; padding: 14px 0; display: flex; align-items: center; gap: 10px; }
+  #dukkanAdi { background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; text-shadow: inherit; padding: 2px 6px; margin-left: -6px; border: 0; box-shadow: none; border-radius: 6px; }
+  #dukkanAdi:hover { background: #ffffff14; }
+  .logo span { background: var(--ana); width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; }
+  nav { display: flex; gap: 4px; flex-wrap: wrap; }
+  nav button { background: none; color: #94a3b8; padding: 18px 14px; border-radius: 0; border-bottom: 3px solid transparent; font-weight: 600; }
+  nav button:hover { color: #fff; background: none; }
+  nav button.aktif { color: #fff; border-bottom-color: var(--ana); }
+  .sag { margin-left: auto; display: flex; gap: 8px; }
+  header a { color: #94a3b8; font-size: 14px; text-decoration: none; border: 1px solid #334155; padding: 6px 12px; border-radius: 8px; }
+  header a:hover { color: #fff; border-color: #64748b; }
+
+  main { max-width: 1150px; margin: 0 auto; padding: 20px 16px 60px; }
+  section { display: none; } section.aktif { display: block; }
+  h2 { font-size: 20px; margin: 0 0 14px; }
+  h3 { font-size: 15px; margin: 0 0 12px; color: var(--soluk); text-transform: uppercase; letter-spacing: .04em; }
+  .kart { background: var(--kart); border-radius: var(--kose); padding: 18px; margin-bottom: 18px; box-shadow: var(--golge); }
+
+  form.izgara { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; align-items: end; }
+  label { display: flex; flex-direction: column; font-size: 13px; color: var(--soluk); gap: 4px; font-weight: 600; }
+  input, select, textarea { font: inherit; padding: 9px 11px; border: 1px solid #cbd5e1; border-radius: 8px; color: var(--yazi); background: #fff; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--ana-acik); border-color: var(--ana); }
+  .genis { grid-column: 1 / -1; }
+  button { font: inherit; font-weight: 600; padding: 9px 16px; border: 0; border-radius: 8px; background: var(--ana); color: #fff; cursor: pointer; }
+  button:hover { filter: brightness(1.08); }
+  button.ikincil { background: #f1f5f9; color: var(--yazi); }
+  button.yesil { background: var(--yesil); } button.kirmizi { background: var(--kirmizi); }
+  button.kucuk { padding: 5px 10px; font-size: 13px; }
+  button.metin { background: none; color: var(--soluk); padding: 4px 8px; font-size: 13px; }
+  button.metin:hover { color: var(--yazi); background: #f1f5f9; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--soluk); padding: 8px 10px; border-bottom: 1px solid var(--cizgi); }
+  td { padding: 12px 10px; border-bottom: 1px solid var(--cizgi); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td small { color: var(--soluk); }
+  .tablo { overflow-x: auto; }
+  .kapali td { opacity: .55; }
+  .islemler { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .bos { text-align: center; color: var(--soluk); padding: 30px; }
+
+  /* Durum renkleri */
+  .durum { padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; border: 0; white-space: nowrap; display: inline-block; }
+  select.durum { padding: 6px 10px; cursor: pointer; }
+  .d-alindi { background: #e2e8f0; color: #334155; }
+  .d-tamirde { background: #ffedd5; color: #9a3412; }
+  .d-hazir { background: #dbeafe; color: #1e40af; }
+  .d-teslim { background: #dcfce7; color: #166534; }
+  .d-iade { background: #fee2e2; color: #991b1b; }
+
+  /* Ürün kartları */
+  .kategori { margin-bottom: 22px; }
+  .urunler { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .urun { background: var(--kart); border-radius: var(--kose); padding: 14px; box-shadow: var(--golge); display: flex; flex-direction: column; gap: 10px; }
+  .urun .ad { font-weight: 600; }
+  .urun .fiyat { font-size: 22px; font-weight: 700; }
+  .adet { display: flex; align-items: center; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; }
+  .adet button { background: #f8fafc; color: var(--yazi); border-radius: 0; padding: 8px 14px; font-size: 18px; line-height: 1; }
+  .adet input { border: 0; width: 100%; text-align: center; border-radius: 0; padding: 8px 0; min-width: 2.5em; }
+  .urun .alt { display: flex; gap: 8px; }
+  .urun .alt .yesil { flex: 1; }
+  .urun .kenar { display: flex; justify-content: flex-end; gap: 2px; margin-top: -6px; }
+
+  /* Gelir / gider */
+  .gun-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .gun-bar strong { font-size: 20px; margin-right: auto; }
+  .ozet { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .ozet div { background: var(--kart); border-radius: var(--kose); padding: 18px; box-shadow: var(--golge); border-top: 4px solid var(--cizgi); color: var(--soluk); font-weight: 600; font-size: 13px; text-transform: uppercase; }
+  .ozet b { display: block; font-size: 28px; margin-top: 6px; text-transform: none; }
+  .ozet .o-gelir { border-top-color: var(--yesil); } .ozet .o-gider { border-top-color: var(--kirmizi); } .ozet .o-net { border-top-color: var(--ana); }
+  .gelir { color: var(--yesil); } .gider { color: var(--kirmizi); }
+  td.tutar { font-weight: 700; text-align: right; white-space: nowrap; }
+
+  /* Ana ekran: saat ve sakin dalgalar (dükkanda iş yokken açık kalır) */
+  /* Tüm pencereyi kaplar (main'in 1150px sınırından ve boşluklarından çıkar) */
+  .ana { width: 100vw; margin: -20px calc(50% - 50vw) -60px; min-height: calc(100vh - 61px); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; position: relative; overflow: hidden; }
+  .saat { font-size: clamp(80px, 19vw, 340px); line-height: 1; font-weight: 300; letter-spacing: -.04em; font-variant-numeric: tabular-nums; position: relative; z-index: 1; }
+  .saat small { font-size: .3em; color: var(--soluk); letter-spacing: 0; margin-left: .15em; }
+  .tarih { color: var(--soluk); font-size: clamp(16px, 1.6vw, 26px); margin-top: 1.2vh; position: relative; z-index: 1; }
+  .dilek { font-size: clamp(22px, 3.2vw, 56px); margin: 4vh 0 30vh; color: var(--ana); position: relative; z-index: 1; animation: nefes 7s ease-in-out infinite; }
+  @keyframes nefes { 50% { opacity: .55; } }
+  /* Yumuşak ışık lekeleri: blur filtresi yerine gradyan, yavaş bilgisayarda da akıcı */
+  .aurora i { position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%; background: radial-gradient(circle, var(--ana) 0%, transparent 65%); opacity: .16; animation: suzul 34s ease-in-out infinite alternate; pointer-events: none; }
+  .aurora i:nth-child(1) { left: -15vmax; top: -25vmax; }
+  .aurora i:nth-child(2) { right: -20vmax; top: 0; background: radial-gradient(circle, var(--yesil) 0%, transparent 65%); animation-duration: 44s; animation-delay: -12s; }
+  .aurora i:nth-child(3) { left: 25vw; bottom: -35vmax; animation-duration: 52s; animation-delay: -25s; opacity: .12; }
+  @keyframes suzul { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(10vw, 6vh) scale(1.2); } 100% { transform: translate(-8vw, -4vh) scale(.9); } }
+  /* Yükselen küçük ışıklar */
+  .parcaciklar i { position: absolute; bottom: -10px; border-radius: 50%; background: var(--ana); box-shadow: 0 0 8px var(--ana); opacity: 0; animation: yuksel linear infinite; pointer-events: none; }
+  @keyframes yuksel { 10% { opacity: .5; } 80% { opacity: .35; } 100% { transform: translate(var(--kay), -85vh); opacity: 0; } }
+  .dalgalar { position: absolute; left: 0; right: 0; bottom: 0; height: 34vh; pointer-events: none; }
+  .dalgalar svg { position: absolute; bottom: 0; left: 0; width: 200%; height: 100%; fill: var(--ana); animation: dalga linear infinite; }
+  .dalgalar svg:nth-child(1) { opacity: .08; animation-duration: 46s; }
+  .dalgalar svg:nth-child(2) { opacity: .12; animation-duration: 32s; animation-direction: reverse; height: 78%; }
+  .dalgalar svg:nth-child(3) { opacity: .18; animation-duration: 22s; height: 52%; }
+  @keyframes dalga { to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) { .ana *, .ana { animation: none !important; } }
+  [data-tema=koyu] .saat { font-weight: 400; } [data-tema=koyu] .dilek { color: var(--yazi); }
+
+  /* Desen kilidi çizim alanı */
+  #desenAlan { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+  #desenAlan[hidden] { display: none; }
+  #desen { width: 180px; height: 180px; touch-action: none; user-select: none; cursor: crosshair; background: var(--zemin); border: 1px solid var(--cizgi); border-radius: var(--kose); }
+  #desen circle { fill: var(--soluk); } #desen circle.secili { fill: var(--ana); }
+  #desen text { fill: var(--yazi); font-size: 20px; text-anchor: middle; }
+  .desen-cizgi { fill: none; stroke: var(--ana); stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; opacity: .55; }
+
+  /* Pencere ve bildirim */
+  dialog { border: 0; border-radius: 16px; padding: 0; width: min(420px, calc(100% - 32px)); box-shadow: 0 20px 50px #0f172a40; }
+  dialog::backdrop { background: #0f172a80; }
+  dialog form { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+  dialog h2 { margin: 0; }
+  #pBilgi { color: var(--soluk); margin: -6px 0 0; white-space: pre-line; }
+  #pGirdi { font-size: 18px; }
+  dialog .butonlar { display: flex; flex-direction: row-reverse; gap: 8px; }  /* Tamam önce: Enter ona basar */
+  #mesaj { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); color: #fff; padding: 12px 20px; border-radius: 10px; display: none; font-weight: 600; box-shadow: 0 8px 24px #0f172a40; z-index: 10; }
+
+  /* ===== Retro terminal teması (üst bardaki düğmeyle açılır) ===== */
+  #temaSec { color: #94a3b8; border: 1px solid #334155; background: none; font-size: 14px; padding: 6px 8px; }
+  #temaSec option { color: initial; background: initial; }
+  [data-tema=retro] {
+    --zemin: #040904; --kart: #081208; --yazi: #3dff74; --soluk: #23a84b; --cizgi: #164a23;
+    --ana: #3dff74; --ana-acik: #3dff7433; --yesil: #3dff74; --kirmizi: #ff5a36; --turuncu: #ffb000;
+    --golge: 0 0 0 1px #1d6b33, 0 0 14px #3dff7414; --kose: 2px;
+  }
+  [data-tema=retro] body { font-family: Consolas, "Courier New", monospace; text-shadow: 0 0 5px #3dff7470;
+    background: radial-gradient(ellipse at center, #0b1d0e 0%, #020502 100%) fixed; }
+  [data-tema=retro] body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 100;
+    background: repeating-linear-gradient(0deg, #0000 0 2px, #0000001f 2px 3px); }  /* hafif tarama çizgileri */
+  [data-tema=retro] header { background: #020502; border-bottom: 1px solid var(--cizgi); }
+  [data-tema=retro] .logo { letter-spacing: .05em; text-transform: uppercase; }
+  [data-tema=retro] .logo span { background: none; border: 1px solid var(--ana); filter: grayscale(1) sepia(1) hue-rotate(75deg) saturate(6); }
+  [data-tema=retro] nav button { color: var(--soluk); text-transform: uppercase; letter-spacing: .04em; border: 0; padding: 18px 10px; }
+  [data-tema=retro] nav button.aktif { background: var(--ana); color: #020502; text-shadow: none; }
+  [data-tema=retro] header a, [data-tema=retro] #temaSec { color: var(--soluk); border-color: var(--cizgi); font-size: 13px; letter-spacing: 0; }
+  [data-tema=retro] h3::before { content: "> "; }
+  [data-tema=retro] h3, [data-tema=retro] th, [data-tema=retro] label { color: var(--soluk); letter-spacing: .08em; }
+  [data-tema=retro] input, [data-tema=retro] select, [data-tema=retro] textarea {
+    background: #020502; color: var(--yazi); border: 1px solid var(--cizgi); border-radius: 2px; caret-color: var(--ana); text-shadow: inherit; }
+  [data-tema=retro] input::placeholder, [data-tema=retro] textarea::placeholder { color: #1a6b31; }
+  [data-tema=retro] input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1) sepia(1) hue-rotate(75deg) saturate(6); }
+  [data-tema=retro] button { white-space: nowrap; background: none; color: var(--ana); border: 1px solid var(--ana); border-radius: 2px; text-transform: uppercase; letter-spacing: .08em; }
+  [data-tema=retro] button:hover { background: var(--ana); color: #020502; text-shadow: none; filter: none; }
+  [data-tema=retro] button.ikincil, [data-tema=retro] button.metin { border-color: var(--cizgi); color: var(--soluk); }
+  [data-tema=retro] button.metin { border: 0; }
+  [data-tema=retro] button.kirmizi { color: var(--kirmizi); border-color: var(--kirmizi); }
+  [data-tema=retro] button.kirmizi:hover { background: var(--kirmizi); color: #020502; }
+  [data-tema=retro] form.izgara button::before, [data-tema=retro] button.yesil::before, [data-tema=retro] #pTamam::before { content: "[ "; }
+  [data-tema=retro] form.izgara button::after, [data-tema=retro] button.yesil::after, [data-tema=retro] #pTamam::after { content: " ]"; }
+  [data-tema=retro] .adet { border-color: var(--cizgi); border-radius: 2px; }
+  [data-tema=retro] .adet button { border: 0; background: #020502; }
+  [data-tema=retro] .adet input { border: 0; }
+  /* Tek renkte durumlar işaret ve parlaklıkla ayrılır */
+  [data-tema=retro] .durum { background: none; border: 1px solid currentColor; border-radius: 2px; text-transform: uppercase; letter-spacing: .06em; }
+  [data-tema=retro] .d-alindi { color: var(--soluk); }
+  [data-tema=retro] .d-tamirde { color: var(--turuncu); text-shadow: 0 0 5px #ffb00070; }
+  [data-tema=retro] .d-hazir { color: #020502; background: var(--ana); text-shadow: none; }
+  [data-tema=retro] .d-teslim { color: var(--soluk); } [data-tema=retro] span.d-teslim::before { content: "✓ "; }
+  [data-tema=retro] .d-iade { color: var(--kirmizi); } [data-tema=retro] span.d-iade::before { content: "✕ "; }
+  [data-tema=retro] .ozet div { border: 1px solid var(--cizgi); border-top-width: 4px; letter-spacing: .1em; }
+  [data-tema=retro] .ozet .o-gelir, [data-tema=retro] .ozet .o-net { border-top-color: var(--ana); }
+  [data-tema=retro] .ozet .o-gider { border-top-color: var(--kirmizi); }
+  [data-tema=retro] .ozet b { font-size: 34px; }
+  [data-tema=retro] .gider { text-shadow: 0 0 5px #ff5a3670; }
+  [data-tema=retro] dialog { background: var(--kart); color: var(--yazi); border: 1px solid var(--ana); border-radius: 2px; box-shadow: 0 0 30px #3dff7433; }
+  [data-tema=retro] dialog::backdrop { background: #000000cc; }
+  [data-tema=retro] #mesaj { color: #020502; text-shadow: none; border-radius: 2px; text-transform: uppercase; letter-spacing: .06em; }
+
+  /* ===== Koyu tema: siyah zemin, nötr butonlar; renk yalnızca durum ve tutarlarda ===== */
+  [data-tema=koyu] {
+    --zemin: #101010; --kart: #181716; --yazi: #eeeeee; --soluk: #8a8380; --cizgi: #3d3a39;
+    --ana: #fafafa; --ana-acik: #4d4947; --yesil: #a0ca92; --kirmizi: #e5534b; --turuncu: #ee6018;
+    --golge: none; --kose: 10px;
+  }
+  [data-tema=koyu] body { letter-spacing: -.01em; }
+  [data-tema=koyu] b, [data-tema=koyu] strong, [data-tema=koyu] h2, [data-tema=koyu] .logo,
+  [data-tema=koyu] .urun .ad, [data-tema=koyu] .urun .fiyat, [data-tema=koyu] td.tutar { font-weight: 400; }
+  [data-tema=koyu] .kart, [data-tema=koyu] .urun { border: 1px solid var(--cizgi); }
+  [data-tema=koyu] header { background: var(--zemin); border-bottom: 1px solid var(--cizgi); }
+  [data-tema=koyu] .logo span { background: #1d1a18; border: 1px solid var(--cizgi); }
+  [data-tema=koyu] h3, [data-tema=koyu] th, [data-tema=koyu] label, [data-tema=koyu] nav button, [data-tema=koyu] .durum,
+  [data-tema=koyu] .ozet div { font-family: Consolas, ui-monospace, monospace; font-size: 12px; text-transform: uppercase; letter-spacing: .02em; font-weight: 400; }
+  [data-tema=koyu] h3 { color: #b8b3b0; }
+  [data-tema=koyu] nav button { background: none; color: var(--soluk); border: 0; padding: 8px 12px; margin: 10px 0; border-radius: 3px; }
+  [data-tema=koyu] nav button:hover { background: #1d1a18; color: var(--yazi); }
+  [data-tema=koyu] nav button.aktif { background: #1d1a18; color: var(--ana); box-shadow: inset 0 0 0 1px var(--cizgi); }
+  [data-tema=koyu] header a, [data-tema=koyu] #temaSec { color: var(--soluk); border-color: var(--cizgi); border-radius: 3px; }
+  [data-tema=koyu] input, [data-tema=koyu] select, [data-tema=koyu] textarea { background: var(--zemin); color: var(--yazi); border-color: var(--cizgi); border-radius: 3px; }
+  [data-tema=koyu] input:focus, [data-tema=koyu] select:focus, [data-tema=koyu] textarea:focus { outline: 1px solid var(--soluk); border-color: var(--soluk); }
+  [data-tema=koyu] input::placeholder, [data-tema=koyu] textarea::placeholder { color: #5d5856; }
+  [data-tema=koyu] input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.8); }
+  [data-tema=koyu] button { background: var(--ana); color: #101010; border-radius: 3px; font-weight: 500; }
+  [data-tema=koyu] button:hover { filter: none; background: #fff; }
+  [data-tema=koyu] button.ikincil { background: #1d1a18; color: var(--yazi); box-shadow: inset 0 0 0 1px var(--cizgi); }
+  [data-tema=koyu] button.ikincil:hover { background: #2a2624; }
+  [data-tema=koyu] button.metin { background: none; color: var(--soluk); font-weight: 400; }
+  [data-tema=koyu] button.metin:hover { color: var(--yazi); background: #1d1a18; }
+  [data-tema=koyu] button.kirmizi { background: none; color: var(--kirmizi); box-shadow: inset 0 0 0 1px var(--kirmizi); }
+  [data-tema=koyu] .adet { border-color: var(--cizgi); border-radius: 3px; }
+  [data-tema=koyu] .adet button { background: #1d1a18; color: var(--yazi); }
+  [data-tema=koyu] .adet input { background: var(--zemin); }
+  [data-tema=koyu] .urun .fiyat { font-size: 26px; letter-spacing: -.03em; }
+  /* Durumlar: renkli nokta ve yazı, dolgu yok */
+  [data-tema=koyu] .durum { background: none; box-shadow: inset 0 0 0 1px var(--cizgi); border-radius: 3px; }
+  [data-tema=koyu] select.durum { background: var(--zemin); }
+  [data-tema=koyu] span.durum::before { content: "● "; }
+  [data-tema=koyu] .d-alindi { color: #b8b3b0; }
+  [data-tema=koyu] .d-tamirde { color: var(--turuncu); }
+  [data-tema=koyu] .d-hazir { color: var(--yesil); box-shadow: inset 0 0 0 1px var(--yesil); }
+  [data-tema=koyu] .d-teslim { color: var(--soluk); }
+  [data-tema=koyu] .d-iade { color: var(--kirmizi); } [data-tema=koyu] span.d-iade::before { content: "✕ "; }
+  /* Özet: Net kartı tek parlak yüzey */
+  [data-tema=koyu] .ozet div { background: var(--kart); border: 1px solid var(--cizgi); color: var(--soluk); }
+  [data-tema=koyu] .ozet b { font-family: "Segoe UI", system-ui, sans-serif; font-size: 40px; font-weight: 400; letter-spacing: -.035em; }
+  [data-tema=koyu] .ozet .o-net { background: #eeeeee; border-color: #eeeeee; color: #4d4947; }
+  [data-tema=koyu] .ozet .o-net b.gelir { color: #101010; }
+  [data-tema=koyu] .gider { color: var(--turuncu); }
+  [data-tema=koyu] dialog { background: #1d1a18; color: var(--yazi); border: 1px solid var(--cizgi); box-shadow: none; }
+  [data-tema=koyu] dialog::backdrop { background: #000000b3; }
+  [data-tema=koyu] #mesaj { color: #101010; box-shadow: none; border-radius: 3px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span>📱</span><button id="dukkanAdi" title="Adı değiştirmek için tıklayın"></button></div>
+  <nav>
+    <button data-sekme="ana" class="aktif">Ana Ekran</button>
+    <button data-sekme="servis">Teknik Servis</button>
+    <button data-sekme="satis">Ürün Satış</button>
+    <button data-sekme="kasa">Gelir / Gider</button>
+  </nav>
+  <div class="sag"><select id="temaSec" aria-label="Tema"><option value="normal">Normal tema</option><option value="koyu">Koyu tema</option><option value="retro">Retro tema</option></select><a href="/yedek">⬇ Yedek indir</a></div>
+</header>
+<main>
+  <section id="ana" class="aktif">
+    <div class="ana">
+      <div class="saat" id="saat"></div>
+      <div class="tarih" id="tarih"></div>
+      <div class="dilek">Hayırlı İşler Bol Kazançlar</div>
+      <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="parcaciklar" id="parcaciklar" aria-hidden="true"></div>
+      <div class="dalgalar" aria-hidden="true"><svg viewBox="0 0 2400 200" preserveAspectRatio="none"><path d="M0 100 Q150 55 300 100 T600 100 T900 100 T1200 100 T1500 100 T1800 100 T2100 100 T2400 100 V200 H0 Z"/></svg><svg viewBox="0 0 2400 200" preserveAspectRatio="none"><path d="M0 100 Q150 70 300 100 T600 100 T900 100 T1200 100 T1500 100 T1800 100 T2100 100 T2400 100 V200 H0 Z"/></svg><svg viewBox="0 0 2400 200" preserveAspectRatio="none"><path d="M0 100 Q150 80 300 100 T600 100 T900 100 T1200 100 T1500 100 T1800 100 T2100 100 T2400 100 V200 H0 Z"/></svg></div>
+    </div>
+  </section>
+
+  <section id="servis">
+    <div class="kart">
+      <h3>Yeni cihaz kaydı</h3>
+      <form id="servisForm" class="izgara">
+        <label>Cihaz modeli *<input name="cihaz_model" required placeholder="ör. iPhone 13"></label>
+        <label>Müşteri ad soyad *<input name="musteri" required></label>
+        <label>Telefon<input name="telefon" type="tel" placeholder="05xx xxx xx xx"></label>
+        <label>Kilit türü<select name="kilit_turu"><option>Yok</option><option>PIN</option><option>Desen</option><option>Şifre</option></select></label>
+        <label>Kilit (PIN / şifre / desen)<input name="kilit_degeri" autocomplete="off"></label>
+        <label>Tahmini ücret (₺)<input name="ucret" type="number" min="0" step="0.01"></label>
+        <div id="desenAlan" class="genis" hidden>
+          <svg id="desen" viewBox="0 0 300 300" role="img" aria-label="Desen çizim alanı"></svg>
+          <div><small>Deseni çizin</small> <button type="button" class="ikincil kucuk" id="desenSil">Temizle</button></div>
+        </div>
+        <label class="genis">Şikayet<textarea name="sikayet" rows="2" placeholder="Müşterinin anlattığı sorun"></textarea></label>
+        <div><button>Kaydet</button></div>
+      </form>
+    </div>
+    <div class="kart">
+      <input id="servisAra" placeholder="🔍  Ara: model, müşteri, telefon" style="width:100%;margin-bottom:10px">
+      <div class="tablo"><table>
+        <thead><tr><th>Tarih</th><th>Cihaz</th><th>Müşteri</th><th>Şikayet</th><th>Kilit</th><th>Ücret</th><th>Durum</th></tr></thead>
+        <tbody id="servisListe"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <section id="satis">
+    <div class="kart">
+      <h3>Yeni ürün çeşidi</h3>
+      <form id="urunForm" class="izgara">
+        <label>Kategori<select name="kategori">
+          <option>Şarj Kablosu</option><option>Şarj Aleti</option><option>Kılıf</option><option>Ekran Koruyucu</option><option>Diğer</option>
+        </select></label>
+        <label>Ürün adı *<input name="ad" required placeholder="ör. 2M TypeC-TypeC"></label>
+        <label>Fiyat (₺) *<input name="fiyat" type="number" min="0.01" step="0.01" required></label>
+        <div><button>Ekle</button></div>
+      </form>
+    </div>
+    <div id="urunListe"></div>
+  </section>
+
+  <section id="kasa">
+    <div class="kart gun-bar">
+      <strong id="gunBaslik"></strong>
+      <button class="ikincil" id="onceki" aria-label="Önceki gün">‹</button>
+      <input type="date" id="gunSec">
+      <button class="ikincil" id="sonraki" aria-label="Sonraki gün">›</button>
+      <button class="ikincil" id="bugun">Bugün</button>
+    </div>
+    <div class="ozet">
+      <div class="o-gelir">Gelir<b class="gelir" id="topGelir"></b></div>
+      <div class="o-gider">Gider<b class="gider" id="topGider"></b></div>
+      <div class="o-net">Net<b id="topNet"></b></div>
+    </div>
+    <div class="kart">
+      <h3>Gelir / gider ekle</h3>
+      <form id="hareketForm" class="izgara">
+        <label>Tür<select name="tur"><option value="gelir">Gelir</option><option value="gider">Gider</option></select></label>
+        <label>Tutar (₺) *<input name="tutar" type="number" min="0.01" step="0.01" required></label>
+        <label>Açıklama *<input name="aciklama" required placeholder="ör. Dükkan kirası"></label>
+        <div><button>Ekle</button></div>
+      </form>
+    </div>
+    <div class="kart"><div class="tablo"><table>
+      <thead><tr><th>Saat</th><th>Açıklama</th><th style="text-align:right">Tutar</th><th></th></tr></thead>
+      <tbody id="hareketListe"></tbody>
+    </table></div></div>
+  </section>
+</main>
+
+<dialog id="pencere">
+  <form method="dialog">
+    <h2 id="pBaslik"></h2>
+    <p id="pBilgi"></p>
+    <label id="pEtiket"><span></span><input id="pGirdi" autocomplete="off"></label>
+    <div class="butonlar">
+      <button value="tamam" id="pTamam"></button>
+      <button value="iptal" class="ikincil" formnovalidate>Vazgeç</button>
+    </div>
+  </form>
+</dialog>
+<div id="mesaj"></div>
+
+<script>
+const VARSAYILAN_AD = 'StoreOps';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tl = n => Number(n).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ₺';
+// Türkçe yazım: nokta binlik ayracı, virgül ondalık ("1.250,50" → "1250.50")
+const sayi = s => String(s).replace(/\./g, '').replace(',', '.').trim();
+const trSayi = n => String(n).replace('.', ',');
+const DURUM = {alindi: 'Alındı', tamirde: 'Tamirde', hazir: 'Hazır', teslim: 'Teslim edildi', iade: 'İade'};
+const SIRA = {hazir: 0, tamirde: 1, alindi: 2};  // müşteri gelince ilk aranan: hazır cihazlar
+
+// Sol üstteki ad: tıklanınca değiştirilir, veritabanında saklanır
+let dukkanAdi = VARSAYILAN_AD;
+function adGoster() {
+  const b = $('#dukkanAdi'); b.textContent = dukkanAdi; document.title = dukkanAdi;
+}
+$('#dukkanAdi').onclick = async () => {
+  const a = await sor({baslik: 'Uygulama adı', bilgi: 'Sol üstte görünecek adı yazın.', girdi: 'Ad', deger: dukkanAdi, buton: 'Kaydet'});
+  if (a === null) return;
+  await api('ayar_yaz', {anahtar: 'dukkan_adi', deger: a});
+  dukkanAdi = a.slice(0, 30); adGoster();
+};
+adGoster();
+api('ayar_oku').then(a => { dukkanAdi = a.dukkan_adi || VARSAYILAN_AD; adGoster(); });
+
+// Tema seçimi bu bilgisayarın tarayıcısında hatırlanır
+let tema = 'normal';
+try { tema = localStorage.getItem('tema') || 'normal'; } catch {}
+function temaUygula() { document.documentElement.dataset.tema = tema; $('#temaSec').value = tema; }
+$('#temaSec').onchange = e => { tema = e.target.value; temaUygula(); try { localStorage.setItem('tema', tema); } catch {} };
+temaUygula();
+
+async function api(op, d = {}) {
+  const r = await fetch('/api', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({op, ...d})})
+    .catch(e => { mesaj('Sunucuya bağlanılamadı — baslat.bat penceresi açık mı?', true); throw e; });
+  const j = await r.json().catch(() => ({hata: 'Sunucu hatası'}));
+  if (!r.ok) { mesaj(j.hata, true); throw new Error(j.hata); }
+  return j;
+}
+function mesaj(t, hata = false) {
+  const m = $('#mesaj'); m.textContent = t; m.style.background = hata ? 'var(--kirmizi)' : 'var(--yesil)';
+  m.style.display = 'block'; clearTimeout(m.t); m.t = setTimeout(() => m.style.display = 'none', hata ? 4000 : 2500);
+}
+function formVeri(f) { return Object.fromEntries(new FormData(f)); }
+
+// Tarayıcının prompt/confirm kutuları yerine uygulamanın kendi penceresi.
+// girdi verilmezse onay penceresidir: true/false döner; verilirse yazılanı (boşsa null) döner.
+function sor({baslik, bilgi = '', girdi, deger = '', buton = 'Tamam', renk = ''}) {
+  const p = $('#pencere'), g = $('#pGirdi');
+  $('#pBaslik').textContent = baslik; $('#pBilgi').textContent = bilgi;
+  $('#pEtiket').style.display = girdi ? '' : 'none'; $('#pEtiket span').textContent = girdi || '';
+  g.value = deger; g.required = !!girdi;
+  $('#pTamam').textContent = buton; $('#pTamam').className = renk;
+  p.returnValue = ''; p.showModal(); if (girdi) g.select();
+  return new Promise(ok => p.addEventListener('close', () => {
+    const evet = p.returnValue === 'tamam';
+    ok(girdi ? (evet && g.value.trim() ? g.value.trim() : null) : evet);
+  }, {once: true}));
+}
+
+// Sekmeler
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button, section').forEach(e => e.classList.remove('aktif'));
+  b.classList.add('aktif'); $('#' + b.dataset.sekme).classList.add('aktif');
+  ({ana: () => {}, servis: servisYukle, satis: urunYukle, kasa: gunYukle})[b.dataset.sekme]();
+});
+
+// Teknik servis
+$('#servisForm').onsubmit = async e => {
+  e.preventDefault(); await api('servis_ekle', formVeri(e.target)); e.target.reset(); desenTemizle(); $('#desenAlan').hidden = true; mesaj('Cihaz kaydedildi'); servisYukle();
+};
+$('#servisAra').oninput = () => servisYukle();
+let servisler = [];
+async function servisYukle() {
+  servisler = await api('servis_listele', {ara: $('#servisAra').value});
+  const sirali = [...servisler].sort((a, b) => (SIRA[a.durum] ?? 9) - (SIRA[b.durum] ?? 9));
+  $('#servisListe').innerHTML = sirali.map(s => {
+    const kapali = s.durum === 'teslim' || s.durum === 'iade';
+    const kilit = !s.kilit_degeri ? esc(s.kilit_turu) :
+      `${esc(s.kilit_turu)} <button class="metin" data-k="${esc(s.kilit_degeri)}" onclick="this.replaceWith(this.dataset.k)">göster</button>`;
+    const durum = kapali
+      ? `<span class="durum d-${s.durum}">${DURUM[s.durum]}</span>${s.iade_nedeni ? '<br><small>' + esc(s.iade_nedeni) + '</small>' : ''}`
+      : `<div class="islemler"><select class="durum d-${s.durum}" onchange="durumDegis(${s.id}, this.value)">${['alindi','tamirde','hazir'].map(d =>
+          `<option value="${d}" ${d === s.durum ? 'selected' : ''}>${DURUM[d]}</option>`).join('')}</select>
+         <button class="yesil kucuk" onclick="teslim(${s.id})">Teslim et</button>
+         <button class="ikincil kucuk" onclick="iade(${s.id})">İade</button></div>`;
+    return `<tr class="${kapali ? 'kapali' : ''}"><td><small>${esc(s.tarih.slice(0, 16))}</small></td><td><b>${esc(s.cihaz_model)}</b></td>
+      <td>${esc(s.musteri)}<br><small>${esc(s.telefon)}</small></td><td>${esc(s.sikayet)}</td>
+      <td>${kilit}</td><td style="white-space:nowrap">${tl(s.ucret)}</td><td>${durum}</td></tr>`;
+  }).join('') || '<tr><td colspan="7" class="bos">Kayıt yok</td></tr>';
+}
+const servisBul = id => servisler.find(s => s.id === id);
+async function durumDegis(id, durum) { await api('servis_durum', {id, durum}); servisYukle(); }
+async function teslim(id) {
+  const s = servisBul(id);
+  const u = await sor({baslik: 'Cihazı teslim et', bilgi: `${s.cihaz_model} — ${s.musteri}\nAlınan ücret gelire yazılacak. Ücretsizse 0 yazın.`,
+    girdi: 'Alınan ücret (₺)', deger: trSayi(s.ucret), buton: 'Teslim et', renk: 'yesil'});
+  if (u === null) return;
+  await api('servis_durum', {id, durum: 'teslim', ucret: sayi(u)}); mesaj('Teslim edildi, gelire yazıldı'); servisYukle();
+}
+async function iade(id) {
+  const s = servisBul(id);
+  const n = await sor({baslik: 'İade et', bilgi: `${s.cihaz_model} — ${s.musteri}\nCihaz tamir edilmeden geri verilecek, gelire bir şey yazılmaz.`,
+    girdi: 'İade nedeni', deger: '', buton: 'İade et', renk: 'kirmizi'});
+  if (n === null) return;
+  await api('servis_durum', {id, durum: 'iade', neden: n}); mesaj('İade edildi'); servisYukle();
+}
+
+// Ürün satış
+$('#urunForm').onsubmit = async e => {
+  e.preventDefault(); await api('urun_ekle', formVeri(e.target)); e.target.reset(); mesaj('Ürün eklendi'); urunYukle();
+};
+let urunler = [];
+async function urunYukle() {
+  urunler = await api('urun_listele');
+  const gruplar = {};
+  urunler.forEach(u => (gruplar[u.kategori] ??= []).push(u));
+  $('#urunListe').innerHTML = Object.entries(gruplar).map(([kat, liste]) => `<div class="kategori"><h3>${esc(kat)}</h3><div class="urunler">
+    ${liste.map(u => `<div class="urun">
+      <div class="kenar"><button class="metin" onclick="fiyatDegis(${u.id})">Fiyat</button><button class="metin" onclick="urunSil(${u.id})">Sil</button></div>
+      <div class="ad">${esc(u.ad)}</div><div class="fiyat">${tl(u.fiyat)}</div>
+      <div class="alt">
+        <div class="adet"><button onclick="adetDegis(${u.id}, -1)" aria-label="Azalt">−</button>
+          <input type="number" min="1" value="1" id="adet${u.id}" aria-label="Adet"><button onclick="adetDegis(${u.id}, 1)" aria-label="Arttır">+</button></div>
+        <button class="yesil" onclick="sat(${u.id})">Sat</button>
+      </div></div>`).join('')}
+  </div></div>`).join('') || '<div class="kart bos">Henüz ürün yok — yukarıdan ekleyin</div>';
+}
+function adetDegis(id, n) { const i = $('#adet' + id); i.value = Math.max(1, (parseInt(i.value) || 1) + n); }
+async function sat(id) {
+  const i = $('#adet' + id), adet = i.value, u = urunler.find(x => x.id === id);
+  await api('sat', {urun_id: id, adet}); i.value = 1; mesaj(`${adet} x ${u.ad} satıldı — ${tl(u.fiyat * adet)} gelire yazıldı`);
+}
+async function fiyatDegis(id) {
+  const u = urunler.find(x => x.id === id);
+  const f = await sor({baslik: 'Fiyat değiştir', bilgi: u.ad, girdi: 'Yeni fiyat (₺)', deger: trSayi(u.fiyat), buton: 'Kaydet'});
+  if (f === null) return;
+  await api('urun_fiyat', {id, fiyat: sayi(f)}); urunYukle();
+}
+async function urunSil(id) {
+  const u = urunler.find(x => x.id === id);
+  if (await sor({baslik: 'Ürün silinsin mi?', bilgi: `${u.ad}\nGeçmiş satışlar kayıtlarda kalır.`, buton: 'Sil', renk: 'kirmizi'})) {
+    await api('urun_sil', {id}); urunYukle();
+  }
+}
+
+// Gelir / gider: tarih seçilmediyse her zaman bugünü gösterir, gece 12'de kendiliğinden yeni güne geçer
+let seciliGun = null, hareketler = [];
+const yerelTarih = d => new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+const bugun = () => yerelTarih(new Date());
+function gunSec(g) { seciliGun = g && g !== bugun() ? g : null; gunYukle(); }
+function gunKaydir(n) { const d = new Date($('#gunSec').value + 'T12:00'); d.setDate(d.getDate() + n); gunSec(yerelTarih(d)); }
+$('#gunSec').onchange = e => gunSec(e.target.value);
+$('#bugun').onclick = () => gunSec(null);
+$('#onceki').onclick = () => gunKaydir(-1);
+$('#sonraki').onclick = () => gunKaydir(1);
+$('#hareketForm').onsubmit = async e => {
+  e.preventDefault(); await api('hareket_ekle', formVeri(e.target)); e.target.reset(); mesaj('Kaydedildi');
+  gunSec(null);
+};
+async function gunYukle() {
+  const g = await api('gun', {tarih: seciliGun || bugun()});
+  $('#gunSec').value = g.tarih;
+  $('#gunBaslik').textContent = (seciliGun ? '' : 'Bugün · ') +
+    new Date(g.tarih + 'T00:00').toLocaleDateString('tr-TR', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+  $('#topGelir').textContent = tl(g.gelir); $('#topGider').textContent = tl(g.gider);
+  $('#topNet').textContent = tl(g.net); $('#topNet').className = g.net < 0 ? 'gider' : 'gelir';
+  $('#hareketListe').innerHTML = g.kayitlar.map(h => `<tr><td><small>${h.tarih_saat.slice(11, 16)}</small></td><td>${esc(h.aciklama)}</td>
+    <td class="tutar ${h.tur}">${h.tur === 'gider' ? '−' : '+'}${tl(h.tutar)}</td>
+    <td style="text-align:right"><button class="metin" onclick="hareketSil(${h.id})">Sil</button></td></tr>`).join('')
+    || '<tr><td colspan="4" class="bos">Bu gün için kayıt yok</td></tr>';
+  hareketler = g.kayitlar;
+}
+async function hareketSil(id) {
+  const h = hareketler.find(x => x.id === id);
+  const ek = h.servis_id ? '\nBu bir servis teslimi; servis kaydı yeniden "Hazır" durumuna döner.' : '';
+  if (await sor({baslik: 'Kayıt silinsin mi?', bilgi: `${h.aciklama} — ${tl(h.tutar)}${ek}`, buton: 'Sil', renk: 'kirmizi'})) {
+    await api('hareket_sil', {id}); gunYukle();
+  }
+}
+let sonGun = bugun();
+setInterval(() => { if (bugun() !== sonGun) { sonGun = bugun(); if (!seciliGun) gunYukle(); } }, 30000);
+
+// Ana ekran saati
+function saatGuncelle() {
+  const d = new Date(), iki = n => String(n).padStart(2, '0');
+  $('#saat').innerHTML = `${iki(d.getHours())}:${iki(d.getMinutes())}<small>${iki(d.getSeconds())}</small>`;
+  $('#tarih').textContent = d.toLocaleDateString('tr-TR', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+}
+saatGuncelle(); setInterval(saatGuncelle, 1000);
+// Ana ekranda yavaşça yükselen 24 küçük ışık; her biri farklı boyut, hız ve yönde
+$('#parcaciklar').innerHTML = Array.from({length: 24}, () => {
+  const r = (a, b) => a + Math.random() * (b - a), boy = r(2, 6).toFixed(1), sure = r(16, 34).toFixed(1);
+  return `<i style="left:${r(0, 100).toFixed(1)}%;width:${boy}px;height:${boy}px;--kay:${r(-60, 60).toFixed(0)}px;animation-duration:${sure}s;animation-delay:-${r(0, sure).toFixed(1)}s"></i>`;
+}).join('');
+
+// Desen ızgarası: noktalar 1-9 (soldan sağa, yukarıdan aşağı); çizilen sıra kilit alanına "1-5-9-6" diye yazılır
+const desen = $('#desen'), kilitGirdi = $('#servisForm').kilit_degeri;
+const NOKTA = i => [50 + (i - 1) % 3 * 100, 50 + Math.floor((i - 1) / 3) * 100];
+let yol = [], ciziyor = false;
+function desenCiz(uc) {
+  const p = yol.map(NOKTA); if (uc) p.push(uc);
+  desen.innerHTML = `<polyline class="desen-cizgi" points="${p.join(' ')}"/>` +
+    [1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => { const [x, y] = NOKTA(i), s = yol.indexOf(i);
+      return `<circle cx="${x}" cy="${y}" r="${s < 0 ? 9 : 15}" class="${s < 0 ? '' : 'secili'}"/>` + (s < 0 ? '' : `<text x="${x + 26}" y="${y - 14}">${s + 1}</text>`); }).join('');
+}
+function noktaEkle(i) {
+  if (yol.includes(i)) return;
+  const son = yol.at(-1);
+  if (son) {  // telefonlardaki gibi: iki nokta arasında kalan orta nokta da desene girer
+    const [a, b] = NOKTA(son), [c, d] = NOKTA(i), mx = (a + c) / 2, my = (b + d) / 2;
+    const orta = (mx - 50) % 100 === 0 && (my - 50) % 100 === 0 ? (my - 50) / 100 * 3 + (mx - 50) / 100 + 1 : 0;
+    if (orta && !yol.includes(orta)) yol.push(orta);
+  }
+  yol.push(i);
+}
+function konum(e) { const r = desen.getBoundingClientRect(); return [(e.clientX - r.left) * 300 / r.width, (e.clientY - r.top) * 300 / r.height]; }
+desen.onpointerdown = e => { ciziyor = true; yol = []; desen.setPointerCapture(e.pointerId); desen.onpointermove(e); };
+desen.onpointermove = e => {
+  if (!ciziyor) return;
+  const [x, y] = konum(e), i = [1, 2, 3, 4, 5, 6, 7, 8, 9].find(n => { const [a, b] = NOKTA(n); return Math.hypot(x - a, y - b) < 34; });
+  if (i) noktaEkle(i);
+  desenCiz([x, y]);
+};
+desen.onpointerup = desen.onpointercancel = () => { ciziyor = false; kilitGirdi.value = yol.join('-'); desenCiz(); };
+function desenTemizle() { yol = []; desenCiz(); }
+$('#desenSil').onclick = () => { desenTemizle(); kilitGirdi.value = ''; };
+$('#servisForm').kilit_turu.onchange = e => { $('#desenAlan').hidden = e.target.value !== 'Desen'; };
+desenCiz();
+</script>
+</body>
+</html>
