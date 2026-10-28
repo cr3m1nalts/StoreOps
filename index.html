@@ -533,6 +533,8 @@ function saatGuncelle() {
   $('#tarih').textContent = d.toLocaleDateString('tr-TR', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
 }
 saatGuncelle(); setInterval(saatGuncelle, 1000);
+// Sunucuya 'pencere hâlâ açık' haberi; kesilince uygulama birkaç dakika içinde kapanır
+setInterval(() => api('ping').catch(() => {}), 20000);
 // Ana ekranda yavaşça yükselen 24 küçük ışık; her biri farklı boyut, hız ve yönde
 $('#parcaciklar').innerHTML = Array.from({length: 24}, () => {
   const r = (a, b) => a + Math.random() * (b - a), boy = r(2, 6).toFixed(1), sure = r(16, 34).toFixed(1);

@@ -6,6 +6,7 @@ import sqlite3
 import subprocess
 import sys
 import threading
+import time
 import webbrowser
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -16,6 +17,7 @@ KLASOR = os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else K
 DB_YOLU = os.path.join(KLASOR, "dukkan.db")
 PORT = 8765
 DB = None
+SON_ISTEK = time.monotonic()  # sayfadan gelen son istek; pencere kapanınca kesilir
 KILIT = threading.Lock()  # sqlite bağlantısını iş parçacıkları arasında sırayla kullanmak için
 
 SEMA = """
@@ -148,6 +150,8 @@ def islem(db, op, d):
             db.execute("DELETE FROM hareket WHERE id=?", (int(d["id"]),))
             return {"ok": True}
 
+        if op == "ping":  # açık sayfa 20 sn'de bir gönderir
+            return {}
         if op == "ayar_oku":
             return {r["anahtar"]: r["deger"] for r in db.execute("SELECT * FROM ayar")}
         if op == "ayar_yaz":
@@ -156,6 +160,11 @@ def islem(db, op, d):
             db.execute("INSERT OR REPLACE INTO ayar VALUES(?,?)", (d["anahtar"], metin(d, "deger", True)[:30]))
             return {"ok": True}
     raise ValueError("Bilinmeyen işlem")
+
+
+def canli():
+    global SON_ISTEK
+    SON_ISTEK = time.monotonic()
 
 
 class Istek(BaseHTTPRequestHandler):
@@ -172,6 +181,7 @@ class Istek(BaseHTTPRequestHandler):
         return self.headers.get("Host") in (f"localhost:{PORT}", f"127.0.0.1:{PORT}")
 
     def do_GET(self):
+        canli()
         if not self.yerel_mi():
             return self.gonder(403, b"", "text/plain")
         if self.path == "/yedek":
@@ -183,6 +193,7 @@ class Istek(BaseHTTPRequestHandler):
             self.gonder(200, f.read(), "text/html; charset=utf-8")
 
     def do_POST(self):
+        canli()
         govde = self.rfile.read(int(self.headers.get("Content-Length", 0)))  # reddedilse de okunmalı (Windows bağlantıyı koparır)
         # JSON başlığı zorunlu: tarayıcı başka sitelerden gelen bu isteği engeller
         if not self.yerel_mi() or self.path != "/api" or self.headers.get("Content-Type") != "application/json":
@@ -200,21 +211,34 @@ class Istek(BaseHTTPRequestHandler):
 
 
 def pencere_ac(url):
-    """Edge'i adres çubuğu olmayan kendi penceresinde açar; pencere kapanana kadar bekletilebilir süreci döner."""
+    """Edge'i adres çubuğu olmayan kendi penceresinde açar (yoksa varsayılan tarayıcıda)."""
     for kok in (os.environ.get("ProgramFiles(x86)"), os.environ.get("ProgramFiles")):
         edge = os.path.join(kok or "", "Microsoft", "Edge", "Application", "msedge.exe")
         if os.path.exists(edge):
-            # ayrı profil: kullanıcının açık Edge'ine karışmaz ve pencere kapanınca süreç biter
-            return subprocess.Popen([edge, f"--app={url}", f"--user-data-dir={os.path.join(KLASOR, 'tarayici')}",
-                                     "--no-first-run", "--no-default-browser-check", "--window-size=1280,820"])
-    webbrowser.open(url)  # shortcut: Edge yoksa normal tarayıcıda açılır ve sunucu kendiliğinden kapanmaz
-    return None
+            # ayrı profil: kullanıcının açık Edge'ine karışmaz
+            subprocess.Popen([edge, f"--app={url}", f"--user-data-dir={os.path.join(KLASOR, 'tarayici')}",
+                              "--no-first-run", "--no-default-browser-check", "--window-size=1280,820"])
+            return
+    webbrowser.open(url)
+
+
+def edge_acik_mi():
+    """Bu uygulamanın Edge profiliyle açık pencere var mı (küçültülmüş ya da uyutulmuş olsa bile)."""
+    profil = os.path.join(KLASOR, "tarayici").replace("'", "''")
+    komut = ("@(Get-CimInstance Win32_Process -Filter \"Name='msedge.exe'\" | Where-Object "
+             f"{{ $_.CommandLine -and $_.CommandLine.Contains('{profil}') }}).Count")
+    try:
+        r = subprocess.run(["powershell", "-NoProfile", "-Command", komut], capture_output=True, text=True,
+                           timeout=60, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        return r.stdout.strip() not in ("", "0")
+    except Exception:
+        return True  # emin değilsek açık kal: pencere sunucusuz kalmasın
 
 
 if __name__ == "__main__":
     if sys.stderr is None:  # .exe konsolsuz çalışır: hatalar dosyaya yazılsın
         sys.stdout = sys.stderr = open(os.path.join(KLASOR, "storeops.log"), "a", encoding="utf-8")
-    adres = f"http://localhost:{PORT}"
+    adres = f"http://127.0.0.1:{PORT}"  # localhost bazı bilgisayarlarda önce IPv6'yı dener
     try:
         sunucu = ThreadingHTTPServer(("127.0.0.1", PORT), Istek)
     except OSError:  # uygulama zaten açık: sadece pencereyi aç
@@ -223,8 +247,9 @@ if __name__ == "__main__":
     DB = ac()
     threading.Thread(target=sunucu.serve_forever, daemon=True).start()
     print(f"Uygulama açık: {adres}")
-    pencere = pencere_ac(adres)
-    if pencere:
-        pencere.wait()  # pencere kapanınca uygulama da kapanır
-    else:
-        threading.Event().wait()
+    canli()
+    pencere_ac(adres)
+    # Pencere kapanınca kapan: 3 dk sayfadan ses gelmezse ve uygulamanın Edge penceresi de kalmadıysa.
+    # (Edge'in açtığı süreci beklemek güvenilir değil: ilk açılışta kendini yeniden başlatabiliyor.)
+    while time.monotonic() - SON_ISTEK < 180 or edge_acik_mi():
+        time.sleep(30)
