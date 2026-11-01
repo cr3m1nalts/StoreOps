@@ -121,6 +121,32 @@
   #desen text { fill: var(--yazi); font-size: 20px; text-anchor: middle; }
   .desen-cizgi { fill: none; stroke: var(--ana); stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; opacity: .55; }
 
+  /* Kur düğmesi, borç uyarısı, rapor görünümü */
+  #kurBtn { background: none; color: #94a3b8; border: 1px solid #334155; font-size: 14px; font-weight: 400; padding: 6px 12px; white-space: nowrap; box-shadow: none; }
+  #kurBtn:hover { background: #ffffff14; color: #fff; }
+  [data-tema=retro] #kurBtn, [data-tema=koyu] #kurBtn { color: var(--soluk); border-color: var(--cizgi); }
+  [data-tema=retro] #kurBtn { font-size: 13px; letter-spacing: 0; }
+  [data-tema=koyu] #kurBtn { border-radius: 3px; }
+  .uyari { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; border-radius: 8px; padding: 10px 14px; font-weight: 600; }
+  .uyari[hidden] { display: none; }
+  [data-tema=retro] .uyari, [data-tema=koyu] .uyari { background: none; color: var(--turuncu); border-color: var(--turuncu); }
+  .ipucu { font-weight: 400; }
+  .gorunum { display: flex; gap: 4px; }
+  #kasa .gorunum button.aktif { background: var(--ana); color: var(--kart); text-shadow: none; }
+  .baslik-toplam { float: right; color: var(--yazi); text-transform: none; }
+  #raporAlan[hidden], #gunlukAlan[hidden] { display: none; }
+  tr.tikla { cursor: pointer; } tr.tikla:hover td { background: var(--ana-acik); }
+
+  /* Cihaz ve parçacı ekranları, güncelleme bandı */
+  [hidden] { display: none !important; }
+  .alt-sekme { display: flex; gap: 4px; flex-wrap: wrap; }
+  #cihaz .alt-sekme button.aktif, #tedarikci .alt-sekme button.aktif { background: var(--ana); color: var(--kart); text-shadow: none; }
+  #tedarikciListe { margin-top: 12px; }
+  .guncelleme { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; padding: 8px 16px; background: #fef3c7; color: #92400e; font-weight: 600; }
+  .guncelleme a { color: inherit; }
+  [data-tema=retro] .guncelleme, [data-tema=koyu] .guncelleme { background: none; color: var(--turuncu); border-bottom: 1px solid var(--turuncu); }
+  #pBilgi { max-height: 55vh; overflow-y: auto; }
+
   /* Pencere ve bildirim */
   dialog { border: 0; border-radius: 16px; padding: 0; width: min(420px, calc(100% - 32px)); box-shadow: 0 20px 50px #0f172a40; }
   dialog::backdrop { background: #0f172a80; }
@@ -146,7 +172,8 @@
   [data-tema=retro] header { background: #020502; border-bottom: 1px solid var(--cizgi); }
   [data-tema=retro] .logo { letter-spacing: .05em; text-transform: uppercase; }
   [data-tema=retro] .logo span { background: none; border: 1px solid var(--ana); filter: grayscale(1) sepia(1) hue-rotate(75deg) saturate(6); }
-  [data-tema=retro] nav button { color: var(--soluk); text-transform: uppercase; letter-spacing: .04em; border: 0; padding: 18px 10px; }
+  [data-tema=retro] header { gap: 10px; }
+  [data-tema=retro] nav button { color: var(--soluk); text-transform: uppercase; letter-spacing: 0; border: 0; padding: 18px 7px; font-size: 14px; }
   [data-tema=retro] nav button.aktif { background: var(--ana); color: #020502; text-shadow: none; }
   [data-tema=retro] header a, [data-tema=retro] #temaSec { color: var(--soluk); border-color: var(--cizgi); font-size: 13px; letter-spacing: 0; }
   [data-tema=retro] h3::before { content: "> "; }
@@ -243,10 +270,19 @@
     <button data-sekme="ana" class="aktif">Ana Ekran</button>
     <button data-sekme="servis">Teknik Servis</button>
     <button data-sekme="satis">Ürün Satış</button>
+    <button data-sekme="stok">Stok</button>
+    <button data-sekme="cihaz">Cihaz</button>
+    <button data-sekme="tedarikci">Tedarikçi</button>
+    <button data-sekme="veresiye">Veresiye</button>
     <button data-sekme="kasa">Gelir / Gider</button>
   </nav>
-  <div class="sag"><select id="temaSec" aria-label="Tema"><option value="normal">Normal tema</option><option value="koyu">Koyu tema</option><option value="retro">Retro tema</option></select><a href="/yedek">⬇ Yedek indir</a></div>
+  <div class="sag"><button id="kurBtn">$ …</button><select id="temaSec" aria-label="Tema"><option value="normal">Normal tema</option><option value="koyu">Koyu tema</option><option value="retro">Retro tema</option></select><a href="/yedek">⬇ Yedek indir</a></div>
 </header>
+<div id="guncellemeBant" class="guncelleme" role="status" hidden>
+  <span id="guncellemeMetin"></span>
+  <button class="ikincil kucuk" id="guncellemeNotlar">Neler değişti?</button>
+  <a href="https://github.com/cr3m1nalts/StoreOps/releases/latest" target="_blank" rel="noopener">İndirme sayfasını aç</a>
+</div>
 <main>
   <section id="ana" class="aktif">
     <div class="ana">
@@ -262,13 +298,15 @@
   <section id="servis">
     <div class="kart">
       <h3>Yeni cihaz kaydı</h3>
-      <form id="servisForm" class="izgara">
+      <form autocomplete="off" id="servisForm" class="izgara">
+        <div id="borcUyari" class="uyari genis" role="alert" hidden></div>
         <label>Cihaz modeli *<input name="cihaz_model" required placeholder="ör. iPhone 13"></label>
         <label>Müşteri ad soyad *<input name="musteri" required></label>
         <label>Telefon<input name="telefon" type="tel" placeholder="05xx xxx xx xx"></label>
         <label>Kilit türü<select name="kilit_turu"><option>Yok</option><option>PIN</option><option>Desen</option><option>Şifre</option></select></label>
         <label>Kilit (PIN / şifre / desen)<input name="kilit_degeri" autocomplete="off"></label>
         <label>Tahmini ücret (₺)<input name="ucret" type="number" min="0" step="0.01"></label>
+        <label>Parça maliyeti ($) <span class="ipucu" id="maliyetTl"></span><input name="maliyet_usd" type="number" min="0" step="0.01"></label>
         <div id="desenAlan" class="genis" hidden>
           <svg id="desen" viewBox="0 0 300 300" role="img" aria-label="Desen çizim alanı"></svg>
           <div><small>Deseni çizin</small> <button type="button" class="ikincil kucuk" id="desenSil">Temizle</button></div>
@@ -278,9 +316,9 @@
       </form>
     </div>
     <div class="kart">
-      <input id="servisAra" placeholder="🔍  Ara: model, müşteri, telefon" style="width:100%;margin-bottom:10px">
+      <input id="servisAra" autocomplete="off" placeholder="🔍  Ara: model, müşteri, telefon" style="width:100%;margin-bottom:10px">
       <div class="tablo"><table>
-        <thead><tr><th>Tarih</th><th>Cihaz</th><th>Müşteri</th><th>Şikayet</th><th>Kilit</th><th>Ücret</th><th>Durum</th></tr></thead>
+        <thead><tr><th>Tarih</th><th>Cihaz</th><th>Müşteri</th><th>Şikayet</th><th>Kilit</th><th>Ücret</th><th>Maliyet</th><th>Durum</th></tr></thead>
         <tbody id="servisListe"></tbody>
       </table></div>
     </div>
@@ -289,11 +327,11 @@
   <section id="satis">
     <div class="kart">
       <h3>Yeni ürün çeşidi</h3>
-      <form id="urunForm" class="izgara">
+      <form autocomplete="off" id="urunForm" class="izgara">
         <label>Kategori<select name="kategori">
-          <option>Şarj Kablosu</option><option>Şarj Aleti</option><option>Kılıf</option><option>Ekran Koruyucu</option><option>Diğer</option>
+          <option>Şarj Kablosu</option><option>Şarj Aleti</option><option>Kulaklık</option><option>Kılıf</option><option>Ekran Koruyucu</option><option>Diğer</option>
         </select></label>
-        <label>Ürün adı *<input name="ad" required placeholder="ör. 2M TypeC-TypeC"></label>
+        <label>Stoktaki ürün *<select name="ad" id="urunSec" required></select></label>
         <label>Fiyat (₺) *<input name="fiyat" type="number" min="0.01" step="0.01" required></label>
         <div><button>Ekle</button></div>
       </form>
@@ -301,12 +339,129 @@
     <div id="urunListe"></div>
   </section>
 
+  <section id="stok">
+    <div class="kart">
+      <h3>Stok girişi (alınan malzeme)</h3>
+      <form autocomplete="off" id="stokForm" class="izgara">
+        <label>Kategori<select name="kategori">
+          <option>Şarj Kablosu</option><option>Şarj Aleti</option><option>Kulaklık</option><option>Kılıf</option><option>Ekran Koruyucu</option><option>Diğer</option>
+        </select></label>
+        <label>Malzeme *<input name="ad" required placeholder="ör. iPhone 13 Kırılmaz Cam"></label>
+        <label>Adet *<input name="adet" type="number" min="1" step="1" value="1" required></label>
+        <label>Birim maliyet *<input name="birim_maliyet" type="number" min="0.01" step="0.01" required></label>
+        <label>Para birimi<select name="para_birimi"><option value="TL">₺ Türk Lirası</option><option value="USD">$ Dolar</option></select></label>
+        <div><button>Kaydet ve gidere yaz</button> <small class="ipucu" id="stokTl"></small></div>
+      </form>
+    </div>
+    <div class="kart"><div class="tablo"><table>
+      <thead><tr><th>Tarih</th><th>Kategori</th><th>Malzeme</th><th style="text-align:right">Toplam</th><th></th></tr></thead>
+      <tbody id="stokListe"></tbody>
+    </table></div></div>
+  </section>
+
+  <section id="cihaz">
+    <div class="kart alt-sekme">
+      <button class="ikincil aktif" data-cihaz="alis">Alış</button><button class="ikincil" data-cihaz="satis">Satış</button>
+    </div>
+    <div id="cihazAlis">
+      <div class="kart">
+        <h3>Cihaz alışı</h3>
+        <form id="cihazForm" class="izgara">
+          <label>Satıcı ad soyad *<input name="satici_ad" required></label>
+          <label>T.C. kimlik no *<input name="satici_tc" required inputmode="numeric" pattern="[0-9]{11}" maxlength="11" title="11 haneli T.C. kimlik numarası"></label>
+          <label>Marka *<input name="marka" required list="markalar" placeholder="ör. Apple"></label>
+          <label>Model *<input name="model" required placeholder="ör. iPhone 13"></label>
+          <label>Depolama *<input name="depolama" required list="depolamalar" placeholder="ör. 128 GB"></label>
+          <label id="pilAlan" hidden>Pil sağlığı (%) *<input name="pil_sagligi" type="number" min="1" max="100"></label>
+          <label>Cihaz durumu<select name="durum"><option>İkinci El</option><option>Sıfır</option><option>Yenilenmiş</option><option>Arızalı</option></select></label>
+          <label>Kozmetik durumu<select name="kozmetik"><option>Çok İyi</option><option>İyi</option><option>Orta</option><option>Kötü</option></select></label>
+          <label>Yurtiçi / yurtdışı<select name="mensei"><option>Yurtiçi</option><option>Yurtdışı</option></select></label>
+          <label>Alış tutarı (₺) *<input name="alis_fiyat" type="number" min="0.01" step="0.01" required></label>
+          <div><button>Kaydet ve gidere yaz</button></div>
+        </form>
+        <datalist id="markalar"><option>Apple</option><option>Samsung</option><option>Xiaomi</option><option>Huawei</option><option>Oppo</option><option>Realme</option></datalist>
+        <datalist id="depolamalar"><option>64 GB</option><option>128 GB</option><option>256 GB</option><option>512 GB</option><option>1 TB</option></datalist>
+      </div>
+      <div class="kart"><h3>Alınan cihazlar</h3><div class="tablo"><table>
+        <thead><tr><th>Tarih</th><th>Cihaz</th><th>Satıcı</th><th style="text-align:right">Alış</th><th></th></tr></thead>
+        <tbody id="cihazListe"></tbody>
+      </table></div></div>
+    </div>
+    <div id="cihazSatis" hidden>
+      <div class="kart">
+        <h3>Cihaz satışı</h3>
+        <form id="cihazSatForm" class="izgara">
+          <label style="grid-column: span 2">Kayıtlı cihaz *<select name="id" id="cihazSec" required></select></label>
+          <label>Satış tutarı (₺) *<input name="fiyat" type="number" min="0.01" step="0.01" required></label>
+          <div><button>Sat ve gelire yaz</button></div>
+        </form>
+      </div>
+      <div class="kart"><h3>Satılan cihazlar</h3><div class="tablo"><table>
+        <thead><tr><th>Satış tarihi</th><th>Cihaz</th><th style="text-align:right">Alış</th><th style="text-align:right">Satış</th><th style="text-align:right">Kâr</th></tr></thead>
+        <tbody id="satilanListe"></tbody>
+      </table></div></div>
+    </div>
+  </section>
+
+  <section id="tedarikci">
+    <div class="kart">
+      <h3>Parça tedarikçileri</h3>
+      <form id="tedarikciForm" class="izgara">
+        <label>Parçacı adı *<input name="ad" required></label>
+        <div><button>Ekle</button></div>
+      </form>
+      <div class="alt-sekme" id="tedarikciListe"></div>
+    </div>
+    <div id="tedarikciAlan" hidden>
+      <div class="kart">
+        <h3>Parça alımı: <span id="tedarikciAd"></span> <span class="baslik-toplam"><button class="metin" id="tedarikciSil">Parçacıyı sil</button></span></h3>
+        <form id="alimForm" class="izgara">
+          <label>Parça *<input name="ad" required placeholder="ör. iPhone 11 Ekran"></label>
+          <label>Adet *<input name="adet" type="number" min="1" step="1" value="1" required></label>
+          <label>Birim maliyet *<input name="birim_maliyet" type="number" min="0.01" step="0.01" required></label>
+          <label>Para birimi<select name="para_birimi"><option value="TL">₺ Türk Lirası</option><option value="USD">$ Dolar</option></select></label>
+          <div><button>Kaydet ve gidere yaz</button></div>
+        </form>
+      </div>
+      <div class="kart gun-bar">
+        <strong id="tedarikciHafta"></strong>
+        <button class="ikincil" id="haftaOnceki" aria-label="Önceki hafta">‹</button>
+        <button class="ikincil" id="haftaSonraki" aria-label="Sonraki hafta">›</button>
+        <button class="ikincil" id="haftaBugun">Bu hafta</button>
+      </div>
+      <div class="kart"><h3>Haftanın alımları <span class="baslik-toplam" id="tedarikciToplam"></span></h3><div class="tablo"><table>
+        <thead><tr><th>Tarih</th><th>Parça</th><th style="text-align:right">Tutar</th><th></th></tr></thead>
+        <tbody id="alimListe"></tbody>
+      </table></div></div>
+    </div>
+  </section>
+
+  <section id="veresiye">
+    <div class="kart">
+      <h3>Yeni veresiye</h3>
+      <form autocomplete="off" id="veresiyeForm" class="izgara">
+        <label>Kişi adı *<input name="ad" required></label>
+        <label>Telefon *<input name="telefon" type="tel" required placeholder="05xx xxx xx xx"></label>
+        <label>Tutar (₺) *<input name="tutar" type="number" min="0.01" step="0.01" required></label>
+        <div><button>Ekle</button></div>
+      </form>
+    </div>
+    <div class="kart">
+      <h3>Veresiye listesi <span class="baslik-toplam" id="veresiyeToplam"></span></h3>
+      <div class="tablo"><table>
+        <thead><tr><th>Tarih</th><th>Kişi</th><th style="text-align:right">Tutar</th><th></th></tr></thead>
+        <tbody id="veresiyeListe"></tbody>
+      </table></div>
+    </div>
+  </section>
+
   <section id="kasa">
     <div class="kart gun-bar">
       <strong id="gunBaslik"></strong>
-      <button class="ikincil" id="onceki" aria-label="Önceki gün">‹</button>
+      <div class="gorunum"><button class="ikincil aktif" data-gorunum="gun">Günlük</button><button class="ikincil" data-gorunum="hafta">Haftalık</button><button class="ikincil" data-gorunum="ay">Aylık</button></div>
+      <button class="ikincil" id="onceki" aria-label="Önceki">‹</button>
       <input type="date" id="gunSec">
-      <button class="ikincil" id="sonraki" aria-label="Sonraki gün">›</button>
+      <button class="ikincil" id="sonraki" aria-label="Sonraki">›</button>
       <button class="ikincil" id="bugun">Bugün</button>
     </div>
     <div class="ozet">
@@ -314,9 +469,20 @@
       <div class="o-gider">Gider<b class="gider" id="topGider"></b></div>
       <div class="o-net">Net<b id="topNet"></b></div>
     </div>
+    <div id="raporAlan" hidden>
+      <div class="kart"><h3>Günlere göre</h3><div class="tablo"><table>
+        <thead><tr><th>Gün</th><th style="text-align:right">Gelir</th><th style="text-align:right">Gider</th><th style="text-align:right">Net</th></tr></thead>
+        <tbody id="raporGunler"></tbody>
+      </table></div></div>
+      <div class="kart"><h3>Alınan parçalar ve maliyetleri <span class="baslik-toplam" id="raporParcaToplam"></span></h3><div class="tablo"><table>
+        <thead><tr><th>Tarih</th><th>Açıklama</th><th style="text-align:right">Maliyet</th></tr></thead>
+        <tbody id="raporParcalar"></tbody>
+      </table></div></div>
+    </div>
+    <div id="gunlukAlan">
     <div class="kart">
       <h3>Gelir / gider ekle</h3>
-      <form id="hareketForm" class="izgara">
+      <form autocomplete="off" id="hareketForm" class="izgara">
         <label>Tür<select name="tur"><option value="gelir">Gelir</option><option value="gider">Gider</option></select></label>
         <label>Tutar (₺) *<input name="tutar" type="number" min="0.01" step="0.01" required></label>
         <label>Açıklama *<input name="aciklama" required placeholder="ör. Dükkan kirası"></label>
@@ -327,11 +493,12 @@
       <thead><tr><th>Saat</th><th>Açıklama</th><th style="text-align:right">Tutar</th><th></th></tr></thead>
       <tbody id="hareketListe"></tbody>
     </table></div></div>
+    </div>
   </section>
 </main>
 
 <dialog id="pencere">
-  <form method="dialog">
+  <form autocomplete="off" method="dialog">
     <h2 id="pBaslik"></h2>
     <p id="pBilgi"></p>
     <label id="pEtiket"><span></span><input id="pGirdi" autocomplete="off"></label>
@@ -390,12 +557,12 @@ function formVeri(f) { return Object.fromEntries(new FormData(f)); }
 
 // Tarayıcının prompt/confirm kutuları yerine uygulamanın kendi penceresi.
 // girdi verilmezse onay penceresidir: true/false döner; verilirse yazılanı (boşsa null) döner.
-function sor({baslik, bilgi = '', girdi, deger = '', buton = 'Tamam', renk = ''}) {
+function sor({baslik, bilgi = '', girdi, deger = '', buton = 'Tamam', renk = '', tekButon = false}) {
   const p = $('#pencere'), g = $('#pGirdi');
   $('#pBaslik').textContent = baslik; $('#pBilgi').textContent = bilgi;
   $('#pEtiket').style.display = girdi ? '' : 'none'; $('#pEtiket span').textContent = girdi || '';
   g.value = deger; g.required = !!girdi;
-  $('#pTamam').textContent = buton; $('#pTamam').className = renk;
+  $('#pTamam').textContent = buton; $('#pTamam').className = renk; $('#pTamam').nextElementSibling.hidden = tekButon;
   p.returnValue = ''; p.showModal(); if (girdi) g.select();
   return new Promise(ok => p.addEventListener('close', () => {
     const evet = p.returnValue === 'tamam';
@@ -407,12 +574,16 @@ function sor({baslik, bilgi = '', girdi, deger = '', buton = 'Tamam', renk = ''}
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   document.querySelectorAll('nav button, section').forEach(e => e.classList.remove('aktif'));
   b.classList.add('aktif'); $('#' + b.dataset.sekme).classList.add('aktif');
-  ({ana: () => {}, servis: servisYukle, satis: urunYukle, kasa: gunYukle})[b.dataset.sekme]();
+  ({ana: () => {}, servis: servisYukle, satis: urunYukle, stok: stokYukle, cihaz: cihazYukle, tedarikci: tedarikciYukle, veresiye: veresiyeYukle, kasa: gunYukle})[b.dataset.sekme]();
 });
 
 // Teknik servis
 $('#servisForm').onsubmit = async e => {
-  e.preventDefault(); await api('servis_ekle', formVeri(e.target)); e.target.reset(); desenTemizle(); $('#desenAlan').hidden = true; mesaj('Cihaz kaydedildi'); servisYukle();
+  e.preventDefault();
+  const borc = await borcKontrol();
+  if (borc.kayitlar.length && !await sor({baslik: 'Borçlu müşteri', bilgi: borc.metin + '\nCihaz yine de kaydedilsin mi?', buton: 'Yine de kaydet', renk: 'kirmizi'})) return;
+  await api('servis_ekle', formVeri(e.target)); e.target.reset(); desenTemizle(); $('#desenAlan').hidden = true; maliyetIpucu(); borcKontrol();
+  mesaj('Cihaz kaydedildi'); servisYukle();
 };
 $('#servisAra').oninput = () => servisYukle();
 let servisler = [];
@@ -431,10 +602,17 @@ async function servisYukle() {
          <button class="ikincil kucuk" onclick="iade(${s.id})">İade</button></div>`;
     return `<tr class="${kapali ? 'kapali' : ''}"><td><small>${esc(s.tarih.slice(0, 16))}</small></td><td><b>${esc(s.cihaz_model)}</b></td>
       <td>${esc(s.musteri)}<br><small>${esc(s.telefon)}</small></td><td>${esc(s.sikayet)}</td>
-      <td>${kilit}</td><td style="white-space:nowrap">${tl(s.ucret)}</td><td>${durum}</td></tr>`;
-  }).join('') || '<tr><td colspan="7" class="bos">Kayıt yok</td></tr>';
+      <td>${kilit}</td><td style="white-space:nowrap">${tl(s.ucret)}</td>
+      <td style="white-space:nowrap">${s.maliyet_tl ? `${tl(s.maliyet_tl)}<br><small>${s.maliyet_usd} $</small><br>` : ''}${kapali ? '' : `<button class="metin" onclick="maliyetEkle(${s.id})">+ Maliyet</button>`}</td><td>${durum}</td></tr>`;
+  }).join('') || '<tr><td colspan="8" class="bos">Kayıt yok</td></tr>';
 }
 const servisBul = id => servisler.find(s => s.id === id);
+async function maliyetEkle(id) {
+  const s = servisBul(id);
+  const u = await sor({baslik: 'Parça maliyeti ekle', bilgi: `${s.cihaz_model} — ${s.musteri}\n` + (kur ? `Kur: ${tl(kur)}. TL karşılığı gidere yazılır.` : 'Dolar kuru yok: önce üstteki kur düğmesinden girin.'), girdi: 'Maliyet ($)', buton: 'Ekle'});
+  if (u === null) return;
+  await api('servis_maliyet', {id, usd: sayi(u)}); mesaj('Maliyet eklendi, gidere yazıldı'); servisYukle();
+}
 async function durumDegis(id, durum) { await api('servis_durum', {id, durum}); servisYukle(); }
 async function teslim(id) {
   const s = servisBul(id);
@@ -451,13 +629,208 @@ async function iade(id) {
   await api('servis_durum', {id, durum: 'iade', neden: n}); mesaj('İade edildi'); servisYukle();
 }
 
+// Dolar kuru: sunucu TCMB'den saatte bir alır; internet yoksa son kur kullanılır ya da elle girilir
+let kur = null, kurBilgi = {};
+async function kurYukle() {
+  kurBilgi = await api('kur'); kur = kurBilgi.kur;
+  const b = $('#kurBtn');
+  b.textContent = kur ? `$ ${tl(kur)}` : '$ kur yok';
+  b.title = kur ? `${kurBilgi.kaynak} · ${kurBilgi.tarih} · ${kur}` : 'Elle girmek için tıklayın';
+  maliyetIpucu(); stokIpucu();
+}
+$('#kurBtn').onclick = async () => {
+  const bilgi = kur ? `Kaynak: ${kurBilgi.kaynak} (döviz satış), tarih: ${kurBilgi.tarih}.\nİnternet varsa TCMB kuru en geç bir saat içinde yeniden yazılır.`
+    : 'TCMB kuru alınamadı. İnternet yoksa kuru elle girebilirsiniz.';
+  const k = await sor({baslik: 'Dolar kuru', bilgi, girdi: '1 $ kaç ₺', deger: kur ? trSayi(kur) : '', buton: 'Kaydet'});
+  if (k === null) return;
+  await api('kur_yaz', {kur: sayi(k)}); kurYukle();
+};
+function maliyetIpucu() {
+  const v = Number($('#servisForm').maliyet_usd.value);
+  $('#maliyetTl').textContent = v > 0 && kur ? `≈ ${tl(v * kur)}` : '';
+}
+$('#servisForm').maliyet_usd.oninput = maliyetIpucu;
+kurYukle(); setTimeout(kurYukle, 8000); setInterval(kurYukle, 300000);
+
+// Borçlu müşteri uyarısı: telefon veya ad, ödenmemiş bir veresiyeyle eşleşirse
+async function borcKontrol() {
+  const f = $('#servisForm'), r = await api('veresiye_kontrol', {telefon: f.telefon.value, ad: f.musteri.value}), u = $('#borcUyari');
+  r.metin = `Bu müşterinin ${tl(r.toplam)} ödenmemiş veresiyesi var: ` + r.kayitlar.map(v => `${v.ad} (${v.telefon}) ${tl(v.tutar)}`).join(', ');
+  u.hidden = !r.kayitlar.length; u.textContent = '⚠ ' + r.metin;
+  return r;
+}
+$('#servisForm').telefon.onchange = $('#servisForm').musteri.onchange = borcKontrol;
+
+// Stok girişi: her kayıt aynı zamanda bir gider satırıdır
+function stokIpucu() {
+  const f = $('#stokForm'), t = Number(f.adet.value) * Number(f.birim_maliyet.value), usd = f.para_birimi.value === 'USD';
+  $('#stokTl').textContent = !(t > 0) ? '' : usd ? (kur ? `Toplam ≈ ${tl(t * kur)}` : 'Dolar kuru yok') : `Toplam ${tl(t)}`;
+}
+$('#stokForm').oninput = stokIpucu;
+$('#stokForm').onsubmit = async e => {
+  e.preventDefault(); await api('stok_ekle', formVeri(e.target)); e.target.reset(); stokIpucu(); mesaj('Stok girişi kaydedildi, gidere yazıldı'); stokYukle();
+};
+let stoklar = [];
+async function stokYukle() {
+  stoklar = await api('stok_listele');
+  $('#stokListe').innerHTML = stoklar.map(h => `<tr><td><small>${esc(h.tarih_saat.slice(0, 16))}</small></td><td>${esc(h.kategori)}</td><td>${esc(h.aciklama.replace('Stok: ', ''))}</td>
+    <td class="tutar">${tl(h.tutar)}${h.usd ? `<br><small>${h.usd} $ × ${h.kur}</small>` : ''}</td>
+    <td style="text-align:right"><button class="metin" onclick="stokSil(${h.id})">Sil</button></td></tr>`).join('')
+    || '<tr><td colspan="5" class="bos">Henüz stok girişi yok</td></tr>';
+}
+async function stokSil(id) {
+  const h = stoklar.find(x => x.id === id);
+  if (await sor({baslik: 'Stok girişi silinsin mi?', bilgi: `${h.aciklama} — ${tl(h.tutar)}\nGider kaydı da silinir.`, buton: 'Sil', renk: 'kirmizi'})) {
+    await api('hareket_sil', {id}); stokYukle();
+  }
+}
+
+// Veresiye
+$('#veresiyeForm').onsubmit = async e => {
+  e.preventDefault(); await api('veresiye_ekle', formVeri(e.target)); e.target.reset(); mesaj('Veresiye eklendi'); veresiyeYukle();
+};
+let veresiyeler = [];
+async function veresiyeYukle() {
+  const r = await api('veresiye_listele'); veresiyeler = r.kayitlar;
+  $('#veresiyeToplam').textContent = 'Toplam borç: ' + tl(r.toplam);
+  $('#veresiyeListe').innerHTML = veresiyeler.map(v => `<tr class="${v.odendi ? 'kapali' : ''}"><td><small>${esc(v.tarih.slice(0, 16))}</small></td>
+    <td><b>${esc(v.ad)}</b><br><small>${esc(v.telefon)}</small></td><td class="tutar">${tl(v.tutar)}</td>
+    <td style="text-align:right">${v.odendi ? `<span class="durum d-teslim">Ödendi</span><br><small>${esc(v.odendi.slice(0, 16))}</small>`
+      : `<div class="islemler" style="justify-content:flex-end"><button class="yesil kucuk" onclick="borcOde(${v.id})">Borç ödendi</button><button class="metin" onclick="veresiyeSil(${v.id})">Sil</button></div>`}</td></tr>`).join('')
+    || '<tr><td colspan="4" class="bos">Veresiye yok</td></tr>';
+}
+async function borcOde(id) {
+  const v = veresiyeler.find(x => x.id === id);
+  if (await sor({baslik: 'Borç ödendi mi?', bilgi: `${v.ad} — ${tl(v.tutar)}\nTutar bugünün gelirine yazılacak.`, buton: 'Borç ödendi', renk: 'yesil'})) {
+    await api('veresiye_ode', {id}); mesaj('Borç ödendi, gelire yazıldı'); veresiyeYukle();
+  }
+}
+async function veresiyeSil(id) {
+  const v = veresiyeler.find(x => x.id === id);
+  if (await sor({baslik: 'Veresiye silinsin mi?', bilgi: `${v.ad} — ${tl(v.tutar)}\nGelire bir şey yazılmaz.`, buton: 'Sil', renk: 'kirmizi'})) {
+    await api('veresiye_sil', {id}); veresiyeYukle();
+  }
+}
+
+// Cihaz alış / satış
+document.querySelectorAll('[data-cihaz]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-cihaz]').forEach(x => x.classList.toggle('aktif', x === b));
+  $('#cihazAlis').hidden = b.dataset.cihaz !== 'alis'; $('#cihazSatis').hidden = b.dataset.cihaz !== 'satis';
+  cihazYukle();
+});
+function pilAlani() {
+  const f = $('#cihazForm'), iphone = /[iİ]phone|apple/i.test(`${f.marka.value} ${f.model.value}`);
+  $('#pilAlan').hidden = !iphone; f.pil_sagligi.required = iphone;
+}
+$('#cihazForm').oninput = pilAlani;
+$('#cihazForm').onsubmit = async e => {
+  e.preventDefault(); await api('cihaz_al', formVeri(e.target)); e.target.reset(); pilAlani(); mesaj('Cihaz kaydedildi, gidere yazıldı'); cihazYukle();
+};
+$('#cihazSatForm').onsubmit = async e => {
+  e.preventDefault(); await api('cihaz_sat', formVeri(e.target)); e.target.reset(); mesaj('Cihaz satıldı, gelire yazıldı'); cihazYukle();
+};
+let cihazlar = [];
+const cihazAdi = c => `${c.marka} ${c.model} ${c.depolama}`;
+async function cihazYukle() {
+  cihazlar = await api('cihaz_listele');
+  const stokta = cihazlar.filter(c => !c.satis_tarih), satilan = cihazlar.filter(c => c.satis_tarih);
+  $('#cihazListe').innerHTML = cihazlar.map(c => `<tr class="${c.satis_tarih ? 'kapali' : ''}"><td><small>${esc(c.alis_tarih.slice(0, 16))}</small></td>
+    <td><b>${esc(cihazAdi(c))}</b><br><small>${esc(c.durum)} · Kozmetik: ${esc(c.kozmetik)} · ${esc(c.mensei)}${c.pil_sagligi ? ` · Pil: %${c.pil_sagligi}` : ''}</small></td>
+    <td>${esc(c.satici_ad)}<br><button class="metin" data-k="${esc(c.satici_tc)}" onclick="this.replaceWith(this.dataset.k)">T.C. göster</button></td>
+    <td class="tutar">${tl(c.alis_fiyat)}</td>
+    <td style="text-align:right">${c.satis_tarih ? '<span class="durum d-teslim">Satıldı</span>' : `<button class="metin" onclick="cihazKaldir(${c.id})">Sil</button>`}</td></tr>`).join('')
+    || '<tr><td colspan="5" class="bos">Henüz alınan cihaz yok</td></tr>';
+  $('#cihazSec').innerHTML = stokta.map(c => `<option value="${c.id}">${esc(cihazAdi(c))} (alış: ${tl(c.alis_fiyat)})</option>`).join('')
+    || '<option value="">Satılacak kayıtlı cihaz yok</option>';
+  $('#satilanListe').innerHTML = satilan.map(c => `<tr><td><small>${esc(c.satis_tarih.slice(0, 16))}</small></td><td><b>${esc(cihazAdi(c))}</b></td>
+    <td class="tutar">${tl(c.alis_fiyat)}</td><td class="tutar">${tl(c.satis_fiyat)}</td><td class="tutar ${c.satis_fiyat < c.alis_fiyat ? 'gider' : 'gelir'}">${tl(c.satis_fiyat - c.alis_fiyat)}</td></tr>`).join('')
+    || '<tr><td colspan="5" class="bos">Henüz satılan cihaz yok</td></tr>';
+}
+async function cihazKaldir(id) {
+  const c = cihazlar.find(x => x.id === id);
+  if (await sor({baslik: 'Cihaz kaydı silinsin mi?', bilgi: `${cihazAdi(c)} — ${tl(c.alis_fiyat)}\nGider kaydı da silinir.`, buton: 'Sil', renk: 'kirmizi'})) {
+    await api('cihaz_sil', {id}); cihazYukle();
+  }
+}
+
+// Parça tedarikçileri: her parçacının kendi haftalık alım tablosu
+let tedarikciler = [], seciliTedarikci = null, tedarikciTarih = null, alimlar = [];
+$('#tedarikciForm').onsubmit = async e => {
+  e.preventDefault(); await api('tedarikci_ekle', formVeri(e.target)); e.target.reset(); mesaj('Parçacı eklendi'); tedarikciYukle();
+};
+async function tedarikciYukle() {
+  tedarikciler = await api('tedarikci_listele');
+  if (!tedarikciler.some(t => t.id === seciliTedarikci)) seciliTedarikci = tedarikciler[0]?.id ?? null;
+  $('#tedarikciListe').innerHTML = tedarikciler.map(t => `<button class="ikincil ${t.id === seciliTedarikci ? 'aktif' : ''}" onclick="tedarikciSec(${t.id})">${esc(t.ad)}</button>`).join('')
+    || '<small>Henüz parçacı yok — yukarıdan ekleyin</small>';
+  $('#tedarikciAlan').hidden = !seciliTedarikci;
+  if (seciliTedarikci) alimlarYukle();
+}
+function tedarikciSec(id) { seciliTedarikci = id; tedarikciTarih = null; tedarikciYukle(); }
+async function alimlarYukle() {
+  const r = await api('tedarikci_kayit', {id: seciliTedarikci, tarih: tedarikciTarih || bugun()}); alimlar = r.kayitlar;
+  const ops = {day: 'numeric', month: 'long'}, g = s => new Date(s + 'T00:00').toLocaleDateString('tr-TR', ops);
+  $('#tedarikciAd').textContent = tedarikciler.find(t => t.id === seciliTedarikci).ad;
+  $('#tedarikciHafta').textContent = `${g(r.bas)} – ${g(r.bit)}`;
+  $('#tedarikciToplam').textContent = 'Toplam: ' + tl(r.toplam);
+  $('#alimListe').innerHTML = alimlar.map(h => `<tr><td><small>${esc(h.tarih_saat.slice(0, 16))}</small></td><td>${esc(h.aciklama.slice(h.aciklama.indexOf(': ') + 2))}</td>
+    <td class="tutar">${tl(h.tutar)}${h.usd ? `<br><small>${h.usd} $ × ${h.kur}</small>` : ''}</td>
+    <td style="text-align:right"><button class="metin" onclick="alimSil(${h.id})">Sil</button></td></tr>`).join('')
+    || '<tr><td colspan="4" class="bos">Bu haftada alım yok</td></tr>';
+}
+function haftaKaydir(n) { const d = new Date((tedarikciTarih || bugun()) + 'T12:00'); d.setDate(d.getDate() + n * 7); tedarikciTarih = yerelTarih(d); alimlarYukle(); }
+$('#haftaOnceki').onclick = () => haftaKaydir(-1);
+$('#haftaSonraki').onclick = () => haftaKaydir(1);
+$('#haftaBugun').onclick = () => { tedarikciTarih = null; alimlarYukle(); };
+$('#alimForm').onsubmit = async e => {
+  e.preventDefault(); await api('tedarikci_alim', {...formVeri(e.target), id: seciliTedarikci}); e.target.reset(); tedarikciTarih = null;
+  mesaj('Parça alımı kaydedildi, gidere yazıldı'); alimlarYukle();
+};
+async function alimSil(id) {
+  const h = alimlar.find(x => x.id === id);
+  if (await sor({baslik: 'Alım silinsin mi?', bilgi: `${h.aciklama} — ${tl(h.tutar)}\nGider kaydı da silinir.`, buton: 'Sil', renk: 'kirmizi'})) {
+    await api('hareket_sil', {id}); alimlarYukle();
+  }
+}
+$('#tedarikciSil').onclick = async () => {
+  const t = tedarikciler.find(x => x.id === seciliTedarikci);
+  if (await sor({baslik: 'Parçacı silinsin mi?', bilgi: t.ad, buton: 'Sil', renk: 'kirmizi'})) {
+    await api('tedarikci_sil', {id: t.id}); tedarikciYukle();
+  }
+};
+
+// Yeni sürüm uyarısı ve bu sürümün yenilikleri (sunucu GitHub'dan okur)
+let guncelleme = {};
+const notMetni = s => s.replace(/[*`#]/g, '');  // GitHub notlarındaki Markdown işaretleri düz metinde görünmesin
+const INDIRME_NOTU ='\n\nİndirdiğiniz StoreOps.exe dosyasını eskisinin yerine koyun; verileriniz dukkan.db dosyasında kalır.';
+async function guncellemeKontrol() {
+  guncelleme = await api('guncelleme');
+  $('#dukkanAdi').title = `StoreOps v${guncelleme.surum} · Adı değiştirmek için tıklayın`;
+  $('#guncellemeBant').hidden = !guncelleme.yeni;
+  if (guncelleme.yeni) $('#guncellemeMetin').textContent = `Yeni sürüm yayımlandı: ${guncelleme.yeni.surum} (şu an v${guncelleme.surum})`;
+  if (guncelleme.notlar && !$('#pencere').open) {
+    await api('notlar_goruldu');
+    sor({baslik: `StoreOps v${guncelleme.surum}: Neler yeni?`, bilgi: notMetni(guncelleme.notlar), tekButon: true});
+  }
+}
+$('#guncellemeNotlar').onclick = () => sor({baslik: `${guncelleme.yeni.surum}: Neler değişti?`, bilgi: notMetni(guncelleme.yeni.notlar || 'Açıklama yok.') + INDIRME_NOTU, tekButon: true});
+guncellemeKontrol(); setInterval(guncellemeKontrol, 60000);
+
 // Ürün satış
 $('#urunForm').onsubmit = async e => {
   e.preventDefault(); await api('urun_ekle', formVeri(e.target)); e.target.reset(); mesaj('Ürün eklendi'); urunYukle();
 };
-let urunler = [];
+let urunler = [], stokUrunleri = [];
+// Satışa yalnızca stoğa girilmiş ve henüz eklenmemiş ürünler eklenebilir
+function urunSecDoldur() {
+  const k = $('#urunForm').kategori.value;
+  $('#urunSec').innerHTML = stokUrunleri.filter(s => s.kategori === k && !urunler.some(u => u.kategori === k && u.ad === s.ad))
+    .map(s => `<option>${esc(s.ad)}</option>`).join('') || '<option value="">Bu kategoride eklenecek stok ürünü yok</option>';
+}
+$('#urunForm').kategori.onchange = urunSecDoldur;
 async function urunYukle() {
-  urunler = await api('urun_listele');
+  [urunler, stokUrunleri] = await Promise.all([api('urun_listele'), api('stok_urunleri')]);
+  urunSecDoldur();
   const gruplar = {};
   urunler.forEach(u => (gruplar[u.kategori] ??= []).push(u));
   $('#urunListe').innerHTML = Object.entries(gruplar).map(([kat, liste]) => `<div class="kategori"><h3>${esc(kat)}</h3><div class="urunler">
@@ -469,7 +842,7 @@ async function urunYukle() {
           <input type="number" min="1" value="1" id="adet${u.id}" aria-label="Adet"><button onclick="adetDegis(${u.id}, 1)" aria-label="Arttır">+</button></div>
         <button class="yesil" onclick="sat(${u.id})">Sat</button>
       </div></div>`).join('')}
-  </div></div>`).join('') || '<div class="kart bos">Henüz ürün yok — yukarıdan ekleyin</div>';
+  </div></div>`).join('') || '<div class="kart bos">Henüz ürün yok — önce Stok sekmesinden giriş yapın, sonra yukarıdan seçin</div>';
 }
 function adetDegis(id, n) { const i = $('#adet' + id); i.value = Math.max(1, (parseInt(i.value) || 1) + n); }
 async function sat(id) {
@@ -490,11 +863,15 @@ async function urunSil(id) {
 }
 
 // Gelir / gider: tarih seçilmediyse her zaman bugünü gösterir, gece 12'de kendiliğinden yeni güne geçer
-let seciliGun = null, hareketler = [];
+let seciliGun = null, hareketler = [], gorunum = 'gun';
 const yerelTarih = d => new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const bugun = () => yerelTarih(new Date());
 function gunSec(g) { seciliGun = g && g !== bugun() ? g : null; gunYukle(); }
-function gunKaydir(n) { const d = new Date($('#gunSec').value + 'T12:00'); d.setDate(d.getDate() + n); gunSec(yerelTarih(d)); }
+function gunKaydir(n) {
+  const d = new Date($('#gunSec').value + 'T12:00');
+  if (gorunum === 'ay') { d.setDate(1); d.setMonth(d.getMonth() + n); } else d.setDate(d.getDate() + n * (gorunum === 'hafta' ? 7 : 1));
+  gunSec(yerelTarih(d));
+}
 $('#gunSec').onchange = e => gunSec(e.target.value);
 $('#bugun').onclick = () => gunSec(null);
 $('#onceki').onclick = () => gunKaydir(-1);
@@ -503,13 +880,38 @@ $('#hareketForm').onsubmit = async e => {
   e.preventDefault(); await api('hareket_ekle', formVeri(e.target)); e.target.reset(); mesaj('Kaydedildi');
   gunSec(null);
 };
+const gunMetni = (g, ops) => new Date(g + 'T00:00').toLocaleDateString('tr-TR', ops);
+async function raporYukle() {
+  const r = await api('rapor', {tur: gorunum, tarih: seciliGun || bugun()}), kisa = {day: 'numeric', month: 'long', year: 'numeric'};
+  $('#gunSec').value = seciliGun || bugun();
+  $('#gunBaslik').textContent = gorunum === 'ay' ? gunMetni(r.bas, {month: 'long', year: 'numeric'}) : `${gunMetni(r.bas, {day: 'numeric', month: 'long'})} – ${gunMetni(r.bit, kisa)}`;
+  ozetYaz(r);
+  $('#raporGunler').innerHTML = r.gunler.map(g => `<tr class="tikla" onclick="gunuAc('${g.gun}')"><td>${gunMetni(g.gun, {weekday: 'long', day: 'numeric', month: 'long'})}</td>
+    <td class="tutar gelir">${tl(g.gelir)}</td><td class="tutar gider">${tl(g.gider)}</td><td class="tutar">${tl(g.gelir - g.gider)}</td></tr>`).join('')
+    || '<tr><td colspan="4" class="bos">Bu dönemde kayıt yok</td></tr>';
+  $('#raporParcaToplam').textContent = 'Toplam: ' + tl(r.parca_toplam);
+  $('#raporParcalar').innerHTML = r.parcalar.map(h => `<tr><td><small>${esc(h.tarih_saat.slice(0, 16))}</small></td><td>${esc(h.aciklama)}</td><td class="tutar gider">${tl(h.tutar)}</td></tr>`).join('')
+    || '<tr><td colspan="3" class="bos">Bu dönemde parça alımı yok</td></tr>';
+}
+function ozetYaz(g) {
+  $('#topGelir').textContent = tl(g.gelir); $('#topGider').textContent = tl(g.gider);
+  $('#topNet').textContent = tl(g.net); $('#topNet').className = g.net < 0 ? 'gider' : 'gelir';
+}
+function gorunumSec(g) {
+  gorunum = g;
+  document.querySelectorAll('.gorunum button').forEach(b => b.classList.toggle('aktif', b.dataset.gorunum === g));
+  $('#raporAlan').hidden = g === 'gun'; $('#gunlukAlan').hidden = g !== 'gun';
+  gunYukle();
+}
+document.querySelectorAll('.gorunum button').forEach(b => b.onclick = () => gorunumSec(b.dataset.gorunum));
+function gunuAc(g) { seciliGun = g === bugun() ? null : g; gorunumSec('gun'); }
 async function gunYukle() {
+  if (gorunum !== 'gun') return raporYukle();
   const g = await api('gun', {tarih: seciliGun || bugun()});
   $('#gunSec').value = g.tarih;
   $('#gunBaslik').textContent = (seciliGun ? '' : 'Bugün · ') +
     new Date(g.tarih + 'T00:00').toLocaleDateString('tr-TR', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
-  $('#topGelir').textContent = tl(g.gelir); $('#topGider').textContent = tl(g.gider);
-  $('#topNet').textContent = tl(g.net); $('#topNet').className = g.net < 0 ? 'gider' : 'gelir';
+  ozetYaz(g);
   $('#hareketListe').innerHTML = g.kayitlar.map(h => `<tr><td><small>${h.tarih_saat.slice(11, 16)}</small></td><td>${esc(h.aciklama)}</td>
     <td class="tutar ${h.tur}">${h.tur === 'gider' ? '−' : '+'}${tl(h.tutar)}</td>
     <td style="text-align:right"><button class="metin" onclick="hareketSil(${h.id})">Sil</button></td></tr>`).join('')
@@ -518,7 +920,9 @@ async function gunYukle() {
 }
 async function hareketSil(id) {
   const h = hareketler.find(x => x.id === id);
-  const ek = h.servis_id ? '\nBu bir servis teslimi; servis kaydı yeniden "Hazır" durumuna döner.' : '';
+  const ek = h.cihaz_id ? (h.tur === 'gelir' ? '\nCihaz yeniden stokta görünür.' : '\nCihaz kaydı da silinir.')
+    : h.tur === 'gelir' && h.servis_id ? '\nBu bir servis teslimi; servis kaydı yeniden "Hazır" durumuna döner.'
+    : h.veresiye_id ? '\nBu bir veresiye ödemesi; borç yeniden açılır.' : '';
   if (await sor({baslik: 'Kayıt silinsin mi?', bilgi: `${h.aciklama} — ${tl(h.tutar)}${ek}`, buton: 'Sil', renk: 'kirmizi'})) {
     await api('hareket_sil', {id}); gunYukle();
   }
