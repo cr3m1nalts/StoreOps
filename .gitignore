@@ -6,6 +6,10 @@ __pycache__/
 
 # Dükkan verileri ve çalışma dosyaları
 *.db
+*.sifreli
+anahtar.dat
+anahtar.dat.tmp
+storeops-yedek-*.zip
 *.log
 tarayici/
 .claude/

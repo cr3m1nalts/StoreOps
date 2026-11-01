@@ -22,21 +22,25 @@ Teknik servis, aksesuar ve cihaz alım-satımı, stok, parçacılar, veresiye ve
 - **Raporlar** — Gelir / Gider ekranında haftalık ve aylık toplamlar, günlük döküm ve alınan parçalar.
 - **3 tema** — Normal, Koyu, Retro (yeşil terminal). Sağ üstten seçilir.
 - **Değiştirilebilir ad** — sol üstteki ada tıklayıp dükkanınızın adını yazın.
-- **Yedek** — sağ üstteki "Yedek indir" veritabanının kopyasını indirir.
+- **Güvenlik** — giriş şifresi, şifreli veritabanı (SQLCipher) ve şifre unutulursa kurtarma kodu.
+- **Yedek** — sağ üstteki **⬇ Yedek** veritabanını ve anahtarını tek zip dosyasında indirir.
 
 ## Kullanım
 
 [Releases](../../releases) sayfasından `StoreOps.exe`'yi indirin, Masaüstünde bir klasöre koyup çift tıklayın.
 Python veya kurulum gerekmez; uygulama kendi penceresinde açılır, pencere kapanınca tamamen kapanır.
 
-- Veriler `.exe`'nin yanındaki `dukkan.db` dosyasında durur. Yedek için bu dosyayı kopyalamanız yeterli.
+- İlk açılışta şifre belirlersiniz ve bir **kurtarma kodu** alırsınız. Kodu kağıda yazıp ayrı saklayın: **şifre de kod da kaybolursa kayıtlar geri getirilemez.**
+- Veriler `.exe`'nin yanındaki şifreli `dukkan.db` dosyasında, anahtarı `anahtar.dat` dosyasında durur. **Elle yedek alırken ikisini birlikte kopyalayın**; tek başına `dukkan.db` açılamaz. **⬇ Yedek** ikisini tek zip dosyasında verir.
+- Geri yüklemek için zip içindeki iki dosyayı `.exe`'nin yanına çıkarın; yedeğin alındığı andaki şifre geçerli olur.
+- Şifre, tezgahtaki ve çalınan bilgisayardaki dosyayı korur; uygulama açıkken bırakılırsa korumaz. Ayrılırken sağ üstteki **🔒** düğmesine basın; şifreyi **🔑** ile değiştirebilirsiniz.
 - `.exe` imzasız olduğu için ilk açılışta Windows SmartScreen uyarı verebilir: **Ek bilgi → Yine de çalıştır**.
 - `.exe`'yi "Program Files" gibi yazma izni olmayan bir klasöre koymayın.
 - Windows 10/11 ve Microsoft Edge gerekir (Windows'ta hazır gelir).
 
 ## Geliştirme
 
-Sadece Python 3 standart kütüphanesi kullanılır, ek paket yoktur.
+Veritabanı şifrelemesi için tek ek paket SQLCipher'dır: `pip install -r requirements.txt`.
 
 | Dosya | Ne işe yarar |
 |---|---|
@@ -44,7 +48,7 @@ Sadece Python 3 standart kütüphanesi kullanılır, ek paket yoktur.
 | `index.html` | Tüm arayüz (HTML + CSS + JavaScript, tek dosya) |
 | `test_server.py` | Testler: `python -m unittest test_server` |
 | `baslat.bat` | Python ile çalıştırır |
-| `exe_yap.bat` | `dist\StoreOps.exe`'yi yeniden üretir (`pip install pyinstaller` gerekir) |
+| `exe_yap.bat` | `dist\StoreOps.exe`'yi yeniden üretir (`requirements.txt` paketleri gerekir) |
 
 ## Lisans
 

@@ -1,0 +1,2 @@
+sqlcipher3-wheels==0.5.7
+pyinstaller==6.22.3

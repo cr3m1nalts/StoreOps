@@ -1,10 +1,13 @@
 import http.client
+import io
 import json
 import os
+import shutil
 import sqlite3
 import tempfile
 import threading
 import unittest
+import zipfile
 from http.server import ThreadingHTTPServer
 
 import server
@@ -273,6 +276,145 @@ class ProfilTest(unittest.TestCase):
             self.assertFalse(oku()["autofill"]["credit_card_enabled"])
 
 
+class KimlikTest(unittest.TestCase):
+    """Şifre, kurtarma kodu ve veritabanı şifrelemesi: gerçek HTTP istekleriyle."""
+
+    def setUp(self):
+        self.k = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.k, True)
+        for ad, deger in (("DB_YOLU", os.path.join(self.k, "dukkan.db")), ("ANAHTAR_YOLU", os.path.join(self.k, "anahtar.dat"))):
+            self.addCleanup(setattr, server, ad, getattr(server, ad))
+            setattr(server, ad, deger)
+        self.addCleanup(self.kapat)
+        server.DB = server.ANAHTAR = server.OTURUM = None
+        self.sunucu = ThreadingHTTPServer(("127.0.0.1", 0), server.Istek)
+        server.PORT = self.sunucu.server_port
+        threading.Thread(target=self.sunucu.serve_forever, daemon=True).start()
+        self.cerez = None
+
+    def kapat(self):
+        self.sunucu.shutdown()
+        if server.DB:
+            server.DB.close()
+        server.DB = server.ANAHTAR = server.OTURUM = None
+
+    def istek(self, op, **d):
+        c = http.client.HTTPConnection("127.0.0.1", server.PORT, timeout=20)
+        b = {"Host": f"127.0.0.1:{server.PORT}", "Content-Type": "application/json"}
+        if self.cerez:
+            b["Cookie"] = self.cerez
+        c.request("POST", "/api", body=json.dumps({"op": op, **d}), headers=b)
+        r = c.getresponse()
+        veri = json.loads(r.read() or b"{}")
+        if r.getheader("Set-Cookie"):
+            self.cerez = r.getheader("Set-Cookie").split(";")[0]
+        c.close()
+        return r.status, veri
+
+    def yedek(self):
+        c = http.client.HTTPConnection("127.0.0.1", server.PORT, timeout=20)
+        b = {"Host": f"127.0.0.1:{server.PORT}"}
+        if self.cerez:
+            b["Cookie"] = self.cerez
+        c.request("GET", "/yedek", headers=b)
+        r = c.getresponse()
+        veri = r.read()
+        c.close()
+        return r.status, veri
+
+    def duz_db(self):
+        d = sqlite3.connect(server.DB_YOLU)
+        d.executescript("""CREATE TABLE veresiye(id INTEGER PRIMARY KEY, tarih TEXT NOT NULL, ad TEXT NOT NULL, telefon TEXT NOT NULL,
+          tutar REAL NOT NULL, odendi TEXT);
+          INSERT INTO veresiye(tarih,ad,telefon,tutar) VALUES('2026-10-28','GIZLI MUSTERI','05551112233',75);""")
+        d.close()
+
+    def test_eski_veritabani_sifrelenir_kayit_kaybolmaz(self):
+        self.duz_db()
+        self.assertEqual(self.istek("durum")[1]["durum"], "kurulum")
+        self.assertEqual(self.istek("veresiye_listele")[0], 401)
+        s, r = self.istek("kurulum", sifre="dogru-sifre")
+        self.assertEqual(s, 200)
+        self.assertEqual(self.istek("veresiye_listele")[1]["toplam"], 75)
+        ham = open(server.DB_YOLU, "rb").read()
+        self.assertNotIn(b"GIZLI MUSTERI", ham)
+        self.assertNotIn(b"SQLite format 3", ham[:16])
+        self.assertFalse(os.path.exists(server.DB_YOLU + ".sifreli"))
+        self.assertEqual(server.DB.execute("PRAGMA secure_delete").fetchone()[0], 1)
+
+    def test_sifre_kilit_ve_erisim(self):
+        self.assertEqual(self.istek("kurulum", sifre="kisa")[0], 400)
+        self.assertFalse(os.path.exists(server.ANAHTAR_YOLU))
+        self.assertEqual(self.istek("kurulum", sifre="dogru-sifre")[0], 200)
+        self.assertEqual(self.istek("veresiye_ekle", ad="A", telefon="05551112233", tutar="10")[0], 200)
+        self.assertEqual(self.yedek()[0], 200)
+        giris_cerezi = self.cerez
+        self.assertEqual(self.istek("kurulum", sifre="baska-sifre")[0], 400)  # ikinci kurulum olmaz
+        self.istek("kilitle")
+        self.assertIsNone(server.DB)
+        for c in (None, giris_cerezi, "oturum=sahte"):  # kilitlenince eski çerez de geçmez
+            self.cerez = c
+            self.assertEqual(self.istek("veresiye_listele")[0], 401)
+            self.assertEqual(self.yedek()[0], 401)
+            self.assertEqual(self.istek("kilitle")[0], 401)
+        self.assertEqual(self.istek("durum")[1]["durum"], "kilitli")
+        self.assertEqual(self.istek("giris", sifre="yanlis-sifre")[0], 400)
+        self.assertIsNone(server.DB)
+        self.assertEqual(self.istek("giris", sifre="dogru-sifre")[0], 200)
+        self.assertEqual(self.istek("veresiye_listele")[1]["toplam"], 10)
+
+    def test_yanlis_sifre_duz_veritabanini_bozmaz(self):
+        # kurulum, anahtar yazıldıktan sonra yarıda kesildiyse giriş taşımayı tamamlar; yanlış şifre dokunamaz
+        self.istek("kurulum", sifre="dogru-sifre")
+        self.istek("kilitle")
+        os.remove(server.DB_YOLU)
+        self.duz_db()
+        onceki = open(server.DB_YOLU, "rb").read()
+        self.assertEqual(self.istek("giris", sifre="yanlis-sifre")[0], 400)
+        self.assertEqual(open(server.DB_YOLU, "rb").read(), onceki)
+        self.assertEqual(self.istek("giris", sifre="dogru-sifre")[0], 200)
+        self.assertEqual(self.istek("veresiye_listele")[1]["toplam"], 75)
+        self.assertNotIn(b"GIZLI MUSTERI", open(server.DB_YOLU, "rb").read())
+
+    def test_kurtarma_kodu_ve_sifre_degistirme(self):
+        kod = self.istek("kurulum", sifre="ilk-sifre")[1]["kurtarma"]
+        self.istek("veresiye_ekle", ad="A", telefon="05551112233", tutar="10")
+        self.assertEqual(self.istek("sifre_degistir", eski="yanlis-sifre", sifre="ikinci-sifre")[0], 400)
+        self.assertEqual(self.istek("sifre_degistir", eski="ilk-sifre", sifre="ikinci-sifre")[0], 200)
+        self.istek("kilitle")
+        self.cerez = None
+        self.assertEqual(self.istek("giris", sifre="ilk-sifre")[0], 400)
+        self.assertEqual(self.istek("kurtar", kod="AAAA-BBBB-CCCC-DDDD-EEEE-FFFF", sifre="yeni-sifre")[0], 400)
+        self.assertEqual(self.istek("kurtar", kod=kod.lower().replace("-", " "), sifre="yeni-sifre")[0], 200)
+        self.assertEqual(self.istek("veresiye_listele")[1]["toplam"], 10)
+        self.istek("kilitle")
+        self.assertEqual(self.istek("giris", sifre="ikinci-sifre")[0], 400)
+        self.assertEqual(self.istek("giris", sifre="yeni-sifre")[0], 200)
+
+    def test_anahtar_kaybolursa_kayitlar_ezilmez(self):
+        self.istek("kurulum", sifre="dogru-sifre")
+        self.istek("kilitle")
+        os.remove(server.ANAHTAR_YOLU)
+        onceki = open(server.DB_YOLU, "rb").read()
+        self.assertEqual(self.istek("durum")[1]["durum"], "anahtar_yok")
+        self.assertEqual(self.istek("kurulum", sifre="yeni-sifre")[0], 400)
+        self.assertEqual(open(server.DB_YOLU, "rb").read(), onceki)
+        self.assertFalse(os.path.exists(server.ANAHTAR_YOLU))
+
+    def test_yedekten_geri_donulur(self):
+        self.istek("kurulum", sifre="dogru-sifre")
+        self.istek("veresiye_ekle", ad="A", telefon="05551112233", tutar="10")
+        s, z = self.yedek()
+        self.istek("kilitle")
+        os.remove(server.DB_YOLU)
+        os.remove(server.ANAHTAR_YOLU)
+        with zipfile.ZipFile(io.BytesIO(z)) as a:
+            self.assertEqual(sorted(a.namelist()), ["anahtar.dat", "dukkan.db"])
+            a.extractall(self.k)
+        self.assertEqual(self.istek("giris", sifre="dogru-sifre")[0], 200)
+        self.assertEqual(self.istek("veresiye_listele")[1]["toplam"], 10)
+
+
 class GuvenlikTest(unittest.TestCase):
     def test_buyuk_yanit_tam_gelir(self):
         server.DB = ac(":memory:")
@@ -298,7 +440,7 @@ class GuvenlikTest(unittest.TestCase):
 
         def istek(host, tip):
             c = http.client.HTTPConnection("127.0.0.1", server.PORT)
-            c.request("POST", "/api", body=b'{"op":"gun"}', headers={"Host": host, "Content-Type": tip})
+            c.request("POST", "/api", body=b'{"op":"ping"}', headers={"Host": host, "Content-Type": tip})
             return c.getresponse().status
 
         yerel = f"localhost:{server.PORT}"

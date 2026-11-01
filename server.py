@@ -1,9 +1,14 @@
 """Telefon dükkanı takip - yerel sunucu. Çalıştırmak için: python server.py"""
+import base64
+import hashlib
+import hmac
+import http.cookies
+import io
 import json
 import math
 import os
 import re
-import sqlite3
+import secrets
 import subprocess
 import sys
 import threading
@@ -11,13 +16,20 @@ import time
 import urllib.request
 import webbrowser
 import xml.etree.ElementTree as ET
+import zipfile
 from datetime import date, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+from sqlcipher3 import dbapi2 as sqlite3
 
 # .exe içinde index.html geçici bir klasöre açılır; veritabanı ise .exe'nin yanında durur
 KAYNAK = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 KLASOR = os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else KAYNAK
 DB_YOLU = os.path.join(KLASOR, "dukkan.db")
+ANAHTAR_YOLU = os.path.join(KLASOR, "anahtar.dat")
+ANAHTAR = None  # veritabanı anahtarı; yalnızca uygulama açıkken bellekte durur
+OTURUM = None
+ACIK_ISLEMLER = ("ping", "durum", "kurulum", "giris", "kurtar")
 PORT = 8765
 DB = None
 SON_ISTEK = time.monotonic()  # sayfadan gelen son istek; pencere kapanınca kesilir
@@ -47,7 +59,7 @@ CREATE TABLE IF NOT EXISTS veresiye(
 YENI_HAREKET_SUTUNLARI = (("usd", "REAL"), ("kur", "REAL"), ("veresiye_id", "INTEGER"), ("kategori", "TEXT"),
                           ("tedarikci_id", "INTEGER"), ("cihaz_id", "INTEGER"))
 TCMB_ADRES = "https://www.tcmb.gov.tr/kurlar/today.xml"
-SURUM = "1.2"  # GitHub'da yayımlanan etiketle aynı olmalı (v1.2)
+SURUM = "1.3"  # GitHub'da yayımlanan etiketle aynı olmalı (v1.2)
 GITHUB_API = "https://api.github.com/repos/cr3m1nalts/StoreOps/releases/"
 GUNCELLEME = {"yeni": None, "notlar": None}  # GitHub'dan okunur, veritabanına yazılmaz
 CIHAZ_DURUMLARI = ("Sıfır", "İkinci El", "Yenilenmiş", "Arızalı")
@@ -62,8 +74,15 @@ def simdi():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-def ac(yol=DB_YOLU):
+def anahtar_pragma(anahtar):
+    return f"\"x'{anahtar.hex()}'\""
+
+
+def ac(yol, anahtar=None):
     db = sqlite3.connect(yol, check_same_thread=False)
+    if anahtar:
+        db.execute(f"PRAGMA key={anahtar_pragma(anahtar)}")
+    db.execute("PRAGMA secure_delete=ON")  # silinen PIN dosyanın boş alanında kalmasın
     db.row_factory = sqlite3.Row
     db.executescript(SEMA)
     mevcut = {r["name"] for r in db.execute("PRAGMA table_info(hareket)")}
@@ -72,6 +91,151 @@ def ac(yol=DB_YOLU):
             if ad not in mevcut:
                 db.execute(f"ALTER TABLE hareket ADD COLUMN {ad} {tip}")
     return db
+
+
+def duz_veritabani_mi():
+    try:
+        with open(DB_YOLU, "rb") as f:
+            return f.read(16) == b"SQLite format 3\0"
+    except OSError:
+        return False
+
+
+def sifreliye_tasi(anahtar):
+    """Eski şifresiz veritabanını şifreliye çevirir; eskisi ancak kayıt sayıları tutarsa değiştirilir."""
+    gecici = DB_YOLU + ".sifreli"
+    if os.path.exists(gecici):
+        os.remove(gecici)
+    eski = sqlite3.connect(DB_YOLU)
+    try:
+        tablolar = [r[0] for r in eski.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
+        say = lambda db: {t: db.execute(f'SELECT COUNT(*) FROM "{t}"').fetchone()[0] for t in tablolar}
+        beklenen = say(eski)
+        eski.execute(f"ATTACH DATABASE ? AS yeni KEY {anahtar_pragma(anahtar)}", (gecici,))
+        eski.execute("SELECT sqlcipher_export('yeni')")
+        eski.commit()
+        eski.execute("DETACH DATABASE yeni")
+    finally:
+        eski.close()
+    yeni = sqlite3.connect(gecici)
+    try:
+        yeni.execute(f"PRAGMA key={anahtar_pragma(anahtar)}")
+        if say(yeni) != beklenen:
+            raise ValueError("Veritabanı şifrelenemedi, eski kayıtlara dokunulmadı")
+    finally:
+        yeni.close()
+    os.replace(gecici, DB_YOLU)
+
+
+def veritabani_ac(anahtar):
+    if duz_veritabani_mi():
+        sifreliye_tasi(anahtar)
+    return ac(DB_YOLU, anahtar)
+
+
+def kdf(sifre, tuz):
+    return hashlib.scrypt(sifre.encode(), salt=tuz, n=2 ** 15, r=8, p=1, maxmem=64 * 1024 * 1024, dklen=32)
+
+
+def sar(anahtar, sifre):
+    # Rastgele anahtar, her seferinde yeni tuzla türetilen değerle XOR'lanır; şifre değişince veritabanı yeniden yazılmaz
+    tuz = os.urandom(16)
+    return {"tuz": tuz.hex(), "sarili": bytes(a ^ b for a, b in zip(anahtar, kdf(sifre, tuz))).hex()}
+
+
+def coz(kayit, sifre):
+    return bytes(a ^ b for a, b in zip(bytes.fromhex(kayit["sarili"]), kdf(sifre, bytes.fromhex(kayit["tuz"]))))
+
+
+def anahtar_oku():
+    with open(ANAHTAR_YOLU, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def anahtar_yaz(k):
+    with open(ANAHTAR_YOLU + ".tmp", "w", encoding="utf-8") as f:
+        json.dump(k, f)
+    os.replace(ANAHTAR_YOLU + ".tmp", ANAHTAR_YOLU)
+
+
+def anahtar_dogru(k, anahtar):
+    return hmac.compare_digest(hashlib.sha256(anahtar).hexdigest(), k["dogrulama"])
+
+
+def kod_norm(kod):
+    return re.sub(r"[^A-Z2-7]", "", str(kod or "").upper())
+
+
+def yeni_sifre(d, alan="sifre"):
+    s = str(d.get(alan) or "")
+    if len(s) < 6:
+        raise ValueError("Şifre en az 6 karakter olmalı")
+    return s
+
+
+def guvenlik_durumu(acik):
+    if acik and DB:
+        return "acik"
+    if os.path.exists(ANAHTAR_YOLU):
+        return "kilitli"
+    if os.path.exists(DB_YOLU) and os.path.getsize(DB_YOLU) > 0 and not duz_veritabani_mi():
+        return "anahtar_yok"  # yeni anahtar üretmek kayıtları okunmaz hale getirir
+    return "kurulum"
+
+
+def oturum_ac(anahtar):
+    global DB, ANAHTAR, OTURUM
+    if DB is None:
+        DB = veritabani_ac(anahtar)
+    ANAHTAR, OTURUM = anahtar, secrets.token_urlsafe(32)
+    return OTURUM
+
+
+def kimlik_islem(op, d, acik):
+    """Giriş ve şifre işlemleri: (sonuç, yeni oturum çerezi) döner."""
+    global DB, ANAHTAR, OTURUM
+    if op == "ping":  # açık sayfa 20 sn'de bir gönderir
+        return {}, None
+    if op == "durum":
+        return {"durum": guvenlik_durumu(acik)}, None
+    if op == "kurulum":
+        if guvenlik_durumu(acik) != "kurulum":
+            raise ValueError("Şifre zaten ayarlanmış")
+        sifre, anahtar = yeni_sifre(d), os.urandom(32)
+        kod = base64.b32encode(os.urandom(15)).decode()
+        anahtar_yaz({"dogrulama": hashlib.sha256(anahtar).hexdigest(), "sifre": sar(anahtar, sifre), "kurtarma": sar(anahtar, kod)})
+        return {"kurtarma": "-".join(kod[i:i + 4] for i in range(0, len(kod), 4))}, oturum_ac(anahtar)
+    if op == "giris":
+        k = anahtar_oku()
+        anahtar = coz(k["sifre"], str(d.get("sifre") or ""))
+        if not anahtar_dogru(k, anahtar):
+            time.sleep(1)
+            raise ValueError("Şifre yanlış")
+        return {"ok": True}, oturum_ac(anahtar)
+    if op == "kurtar":
+        k = anahtar_oku()
+        sifre = yeni_sifre(d)
+        anahtar = coz(k["kurtarma"], kod_norm(d.get("kod")))
+        if not anahtar_dogru(k, anahtar):
+            time.sleep(1)
+            raise ValueError("Kurtarma kodu yanlış")
+        k["sifre"] = sar(anahtar, sifre)
+        anahtar_yaz(k)
+        return {"ok": True}, oturum_ac(anahtar)
+    if op == "sifre_degistir":
+        k = anahtar_oku()
+        if coz(k["sifre"], str(d.get("eski") or "")) != ANAHTAR:
+            time.sleep(1)
+            raise ValueError("Mevcut şifre yanlış")
+        k["sifre"] = sar(ANAHTAR, yeni_sifre(d))
+        anahtar_yaz(k)
+        return {"ok": True}, None
+    if op == "kilitle":
+        if DB:
+            DB.close()
+        DB = ANAHTAR = OTURUM = None
+        return {"ok": True}, None
+    raise ValueError("Bilinmeyen işlem")
 
 
 def satirlar(cur):
@@ -188,12 +352,17 @@ def kur_coz(xml):
 
 def kur_dongusu():
     while True:
+        if DB is None:  # kilitliyken veritabanına yazılamaz
+            time.sleep(3)
+            continue
         try:
             istek = urllib.request.Request(TCMB_ADRES, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(istek, timeout=15) as r:
                 kur, tarih = kur_coz(r.read(2_000_000))
-            with KILIT, DB:
-                kur_kaydet(DB, kur, tarih, "TCMB")
+            with KILIT:
+                if DB:
+                    with DB:
+                        kur_kaydet(DB, kur, tarih, "TCMB")
             bekle = 3600
         except OSError:  # internet yok: son kur geçerli kalır, sessizce yeniden denenir
             bekle = 300
@@ -329,8 +498,6 @@ def islem(db, op, d):
             db.execute("DELETE FROM hareket WHERE id=?", (int(d["id"]),))
             return {"ok": True}
 
-        if op == "ping":  # açık sayfa 20 sn'de bir gönderir
-            return {}
         if op == "veresiye_listele":
             toplam = db.execute("SELECT COALESCE(SUM(tutar),0) t FROM veresiye WHERE odendi IS NULL").fetchone()["t"]
             return {"toplam": round(toplam, 2), "kayitlar": satirlar(db.execute(
@@ -488,15 +655,28 @@ class Istek(BaseHTTPRequestHandler):
         # başka sitelerin (DNS rebinding) bu sunucuya erişmesini engeller
         return self.headers.get("Host") in (f"localhost:{PORT}", f"127.0.0.1:{PORT}")
 
+    def oturum_gecerli(self):
+        try:
+            c = http.cookies.SimpleCookie(self.headers.get("Cookie") or "").get("oturum")
+        except http.cookies.CookieError:
+            return False
+        return bool(OTURUM and c and hmac.compare_digest(c.value, OTURUM))
+
     def do_GET(self):
         canli()
         if not self.yerel_mi():
             return self.gonder(403, b"", "text/plain")
         if self.path == "/yedek":
-            with KILIT, open(DB_YOLU, "rb") as f:
-                ad = f"dukkan-yedek-{simdi()[:10]}.db"
-                return self.gonder(200, f.read(), "application/octet-stream",
-                                   {"Content-Disposition": f'attachment; filename="{ad}"'})
+            if not self.oturum_gecerli():
+                return self.gonder(401, b"", "text/plain")
+            tampon = io.BytesIO()
+            # anahtar.dat olmadan yedek açılamaz, ikisi birlikte verilir
+            with KILIT, zipfile.ZipFile(tampon, "w", zipfile.ZIP_DEFLATED) as z:
+                z.write(DB_YOLU, "dukkan.db")
+                z.write(ANAHTAR_YOLU, "anahtar.dat")
+            ad = f"storeops-yedek-{simdi()[:10]}.zip"
+            return self.gonder(200, tampon.getvalue(), "application/zip",
+                               {"Content-Disposition": f'attachment; filename="{ad}"'})
         with open(os.path.join(KAYNAK, "index.html"), "rb") as f:
             self.gonder(200, f.read(), "text/html; charset=utf-8")
 
@@ -508,11 +688,21 @@ class Istek(BaseHTTPRequestHandler):
             return self.gonder(403, b"", "text/plain")
         try:
             d = json.loads(govde or b"{}")
+            op, ek = d.get("op"), {}
             with KILIT:
-                sonuc, kod = islem(DB, d.get("op"), d), 200
+                acik = self.oturum_gecerli()
+                if op in ACIK_ISLEMLER or (acik and op in ("sifre_degistir", "kilitle")):
+                    sonuc, cerez = kimlik_islem(op, d, acik)
+                    kod = 200
+                    if cerez:
+                        ek["Set-Cookie"] = f"oturum={cerez}; HttpOnly; SameSite=Strict; Path=/"
+                elif not acik or DB is None:
+                    sonuc, kod = {"hata": "Oturum kapalı"}, 401
+                else:
+                    sonuc, kod = islem(DB, op, d), 200
         except Exception as e:  # her hata kullanıcıya mesaj olarak döner; yazılanlar zaten geri alınmıştır
-            sonuc, kod = {"hata": str(e) or "Geçersiz veri"}, 400
-        self.gonder(kod, json.dumps(sonuc, ensure_ascii=False).encode(), "application/json; charset=utf-8")
+            sonuc, kod, ek = {"hata": str(e) or "Geçersiz veri"}, 400, {}
+        self.gonder(kod, json.dumps(sonuc, ensure_ascii=False).encode(), "application/json; charset=utf-8", ek)
 
     def log_message(self, *a):
         pass
@@ -527,6 +717,8 @@ def otomatik_doldurmayi_kapat(profil):
     except (OSError, ValueError):
         ayarlar = {}
     ayarlar.setdefault("autofill", {}).update(profile_enabled=False, credit_card_enabled=False)
+    ayarlar["credentials_enable_service"] = False  # Edge şifreyi kaydetmeyi önermesin
+    ayarlar.setdefault("profile", {})["password_manager_enabled"] = False
     os.makedirs(os.path.dirname(yol), exist_ok=True)
     with open(yol + ".tmp", "w", encoding="utf-8") as f:
         json.dump(ayarlar, f)
@@ -567,7 +759,6 @@ if __name__ == "__main__":
     except OSError:  # uygulama zaten açık: sadece pencereyi aç
         pencere_ac(adres)
         raise SystemExit
-    DB = ac()
     threading.Thread(target=sunucu.serve_forever, daemon=True).start()
     threading.Thread(target=kur_dongusu, daemon=True).start()
     threading.Thread(target=guncelleme_dongusu, daemon=True).start()
