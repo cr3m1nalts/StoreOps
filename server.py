@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS veresiye(
 YENI_HAREKET_SUTUNLARI = (("usd", "REAL"), ("kur", "REAL"), ("veresiye_id", "INTEGER"), ("kategori", "TEXT"),
                           ("tedarikci_id", "INTEGER"), ("cihaz_id", "INTEGER"))
 TCMB_ADRES = "https://www.tcmb.gov.tr/kurlar/today.xml"
-SURUM = "1.3"  # GitHub'da yayımlanan etiketle aynı olmalı (ör. v1.3)
+SURUM = "1.4"  # GitHub'da yayımlanan etiketle aynı olmalı (ör. v1.3)
 GITHUB_API = "https://api.github.com/repos/cr3m1nalts/StoreOps/releases/"
 GUNCELLEME = {"yeni": None, "notlar": None}  # GitHub'dan okunur, veritabanına yazılmaz
 CIHAZ_DURUMLARI = ("Sıfır", "İkinci El", "Yenilenmiş", "Arızalı")
