@@ -164,6 +164,63 @@
   .sag .ustBtn:hover { background: #ffffff14; color: #fff; }
   [data-tema=retro] .sag .ustBtn, [data-tema=koyu] .sag .ustBtn { color: var(--soluk); border-color: var(--cizgi); }
 
+  /* ===== Yılbaşı teması: gece mavisi, altın ve kar ===== */
+  #kar { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 65; }
+  #kar i { position: absolute; top: -6vh; color: #fff; font-style: normal; opacity: .85; animation: kar linear infinite; text-shadow: 0 0 6px #ffffff80; }
+  @keyframes kar { 50% { transform: translate(calc(var(--kay) * -1), 55vh) rotate(180deg); } 100% { transform: translate(var(--kay), 112vh) rotate(360deg); } }
+  .suslemeler, .yeniyil { display: none; }
+  [data-tema=yilbasi] {
+    --zemin: #0e1430; --kart: #182148; --yazi: #f3f6ff; --soluk: #a3b3da; --cizgi: #2f3b6e;
+    --ana: #f5c451; --ana-acik: #f5c45133; --yesil: #6fe3b0; --kirmizi: #ff7a88; --turuncu: #ffb454;
+    --golge: 0 4px 18px #04081f80; --kose: 12px;
+  }
+  [data-tema=yilbasi] body { background: linear-gradient(#0c1230, #1b1745) fixed; }
+  [data-tema=yilbasi] header { background: #0a0f26; }
+  [data-tema=yilbasi] header::after, [data-tema=yilbasi] header::before { content: ""; position: absolute; left: 0; right: 0; bottom: -22px; height: 24px; pointer-events: none; background-repeat: repeat-x; }
+  [data-tema=yilbasi] header::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='24'%3E%3Cpath d='M0 2Q30 16 60 2T120 2' fill='none' stroke='%23556' stroke-width='1.2'/%3E%3Ccircle cx='30' cy='13' r='4' fill='%23f5c451'/%3E%3Ccircle cx='60' cy='6' r='4' fill='%238fd3ff'/%3E%3Ccircle cx='90' cy='13' r='4' fill='%23ffffff'/%3E%3C/svg%3E"); animation: isik 2.4s ease-in-out infinite; }
+  [data-tema=yilbasi] header::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='24'%3E%3Cpath d='M0 2Q30 16 60 2T120 2' fill='none' stroke='%23556' stroke-width='1.2'/%3E%3Ccircle cx='30' cy='13' r='4' fill='%23ffe9a8'/%3E%3Ccircle cx='60' cy='6' r='4' fill='%23d7f0ff'/%3E%3Ccircle cx='90' cy='13' r='4' fill='%23ffd27a'/%3E%3C/svg%3E"); animation: isik 2.4s ease-in-out -1.2s infinite; }
+  @keyframes isik { 50% { opacity: .2; } }
+  [data-tema=yilbasi] main { padding-top: 34px; }
+  [data-tema=yilbasi] .ana { margin-top: -34px; }
+  [data-tema=yilbasi] button { color: #1b1745; }
+  [data-tema=yilbasi] nav button { color: #b9c6e8; }
+  [data-tema=yilbasi] nav button.aktif, [data-tema=yilbasi] nav button:hover { color: #fff; }
+  [data-tema=yilbasi] button.ikincil { background: #26315f; color: var(--yazi); }
+  [data-tema=yilbasi] button.metin { color: var(--soluk); }
+  [data-tema=yilbasi] button.metin:hover { background: #26315f; color: var(--yazi); }
+  [data-tema=yilbasi] input, [data-tema=yilbasi] select, [data-tema=yilbasi] textarea { background: var(--zemin); color: var(--yazi); border-color: var(--cizgi); }
+  [data-tema=yilbasi] input::placeholder, [data-tema=yilbasi] textarea::placeholder { color: #6f7fa8; }
+  [data-tema=yilbasi] input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.85); }
+  [data-tema=yilbasi] .adet { border-color: var(--cizgi); }
+  [data-tema=yilbasi] .adet button { background: #26315f; color: var(--yazi); }
+  [data-tema=yilbasi] .ozet div { border-top-color: var(--cizgi); }
+  [data-tema=yilbasi] .ozet .o-gelir { border-top-color: var(--yesil); } [data-tema=yilbasi] .ozet .o-gider { border-top-color: var(--kirmizi); } [data-tema=yilbasi] .ozet .o-net { border-top-color: var(--ana); }
+  [data-tema=yilbasi] .d-alindi { background: #2f3b6e; color: #dbe4ff; }
+  [data-tema=yilbasi] .d-tamirde { background: #4a3620; color: #ffc98a; }
+  [data-tema=yilbasi] .d-hazir { background: #1e3f73; color: #a9d6ff; }
+  [data-tema=yilbasi] .d-teslim { background: #1b4a3a; color: #8ff0c4; }
+  [data-tema=yilbasi] .d-iade { background: #552634; color: #ffb3bd; }
+  [data-tema=yilbasi] .uyari, [data-tema=yilbasi] .guncelleme { background: none; color: var(--ana); border-color: var(--ana); }
+  [data-tema=yilbasi] .guncelleme { border-bottom: 1px solid var(--ana); }
+  [data-tema=yilbasi] dialog { background: var(--kart); color: var(--yazi); }
+  [data-tema=yilbasi] .saat { color: #fff; text-shadow: 0 0 34px #f5c45140; }
+  [data-tema=yilbasi] .dilek { color: var(--ana); }
+  [data-tema=yilbasi] .yeniyil { display: block; position: relative; z-index: 1; margin-bottom: 1vh; font-size: clamp(20px, 2.6vw, 44px); letter-spacing: .08em; background: linear-gradient(90deg, #f5c451, #fff3c9, #f5c451); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  [data-tema=yilbasi] .parcaciklar { display: none; }
+  [data-tema=yilbasi] .aurora i:nth-child(2) { background: radial-gradient(circle, #6f8cff 0%, transparent 65%); }
+  /* Dalgalar burada kar yığını: durur */
+  [data-tema=yilbasi] .dalgalar svg { fill: #e6eeff; animation-play-state: paused; }
+  [data-tema=yilbasi] .dalgalar svg:nth-child(1) { opacity: .25; }
+  [data-tema=yilbasi] .dalgalar svg:nth-child(2) { opacity: .5; }
+  [data-tema=yilbasi] .dalgalar svg:nth-child(3) { opacity: .95; }
+  /* Tepeden sarkan toplar */
+  [data-tema=yilbasi] .suslemeler { display: block; position: absolute; inset: 0 0 auto 0; height: 0; z-index: 1; pointer-events: none; }
+  .suslemeler i { position: absolute; top: 0; width: 2px; height: var(--ip); background: #8a94b8; transform-origin: top center; animation: salla var(--sure) ease-in-out infinite alternate; }
+  .suslemeler i::after { content: ""; position: absolute; top: 100%; left: 50%; width: var(--boy); height: var(--boy); margin-left: calc(var(--boy) / -2); border-radius: 50%; background: radial-gradient(circle at 32% 28%, #fff 0%, var(--renk) 34%, #0e1430 130%); box-shadow: 0 0 20px var(--renk); }
+  .suslemeler i::before { content: ""; position: absolute; top: calc(100% - 4px); left: 50%; width: 10px; height: 7px; margin-left: -5px; background: #d9c07a; border-radius: 2px; z-index: 1; }
+  @keyframes salla { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+  @media (prefers-reduced-motion: reduce) { #kar, .suslemeler i, [data-tema=yilbasi] header::before, [data-tema=yilbasi] header::after { animation: none !important; } }
+
   /* Pencere ve bildirim */
   dialog { border: 0; border-radius: 16px; padding: 0; width: min(420px, calc(100% - 32px)); box-shadow: 0 20px 50px #0f172a40; }
   dialog::backdrop { background: #0f172a80; }
@@ -281,6 +338,7 @@
 </style>
 </head>
 <body>
+<div id="kar" aria-hidden="true"></div>
 <div id="kilitEkrani">
   <div class="kart kilit-panel" id="panel-kurulum" hidden>
     <h2>Şifre belirleyin</h2>
@@ -335,7 +393,7 @@
     <button data-sekme="veresiye">Veresiye</button>
     <button data-sekme="kasa">Gelir / Gider</button>
   </nav>
-  <div class="sag"><button id="kurBtn">$ …</button><select id="temaSec" aria-label="Tema"><option value="normal">Normal</option><option value="koyu">Koyu</option><option value="retro">Retro</option></select><a href="/yedek" title="Yedek indir">⬇ Yedek</a><button class="ustBtn" id="sifreBtn" title="Şifre değiştir" aria-label="Şifre değiştir">🔑</button><button class="ustBtn" id="kilitleBtn" title="Kilitle" aria-label="Kilitle">🔒</button></div>
+  <div class="sag"><button id="kurBtn">$ …</button><select id="temaSec" aria-label="Tema"><option value="normal">Normal</option><option value="koyu">Koyu</option><option value="retro">Retro</option><option value="yilbasi">Yılbaşı</option></select><a href="/yedek" title="Yedek indir">⬇ Yedek</a><button class="ustBtn" id="sifreBtn" title="Şifre değiştir" aria-label="Şifre değiştir">🔑</button><button class="ustBtn" id="kilitleBtn" title="Kilitle" aria-label="Kilitle">🔒</button></div>
 </header>
 <div id="guncellemeBant" class="guncelleme" role="status" hidden>
   <span id="guncellemeMetin"></span>
@@ -345,6 +403,10 @@
 <main>
   <section id="ana" class="aktif">
     <div class="ana">
+      <div class="suslemeler" aria-hidden="true">
+        <i style="left:8%;--ip:70px;--boy:46px;--renk:#f5c451;--sure:3.4s"></i><i style="left:21%;--ip:130px;--boy:32px;--renk:#8fd3ff;--sure:4.1s"></i><i style="left:36%;--ip:50px;--boy:28px;--renk:#d9e2ff;--sure:3.1s"></i><i style="left:66%;--ip:60px;--boy:30px;--renk:#ffd27a;--sure:3.7s"></i><i style="left:80%;--ip:135px;--boy:40px;--renk:#d9e2ff;--sure:4.4s"></i><i style="left:92%;--ip:75px;--boy:34px;--renk:#8fd3ff;--sure:3.2s"></i>
+      </div>
+      <div class="yeniyil" id="yeniYil"></div>
       <div class="saat" id="saat"></div>
       <div class="tarih" id="tarih"></div>
       <div class="dilek">Hayırlı İşler Bol Kazançlar</div>
@@ -596,7 +658,17 @@ adGoster();
 // Tema seçimi bu bilgisayarın tarayıcısında hatırlanır
 let tema = 'normal';
 try { tema = localStorage.getItem('tema') || 'normal'; } catch {}
-function temaUygula() { document.documentElement.dataset.tema = tema; $('#temaSec').value = tema; }
+function karAyarla() {
+  const k = $('#kar'), acik = tema === 'yilbasi' && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!acik) { k.innerHTML = ''; return; }
+  if (k.children.length) return;
+  const r = (a, b) => a + Math.random() * (b - a);
+  k.innerHTML = Array.from({length: 45}, () => {
+    const sure = r(9, 22).toFixed(1), buyuk = Math.random() < .4;
+    return `<i style="left:${r(0, 100).toFixed(1)}%;font-size:${(buyuk ? r(13, 24) : r(5, 11)).toFixed(0)}px;--kay:${r(-50, 50).toFixed(0)}px;animation-duration:${sure}s;animation-delay:-${r(0, sure).toFixed(1)}s">${buyuk ? '❄\uFE0E' : '●'}</i>`;
+  }).join('');
+}
+function temaUygula() { document.documentElement.dataset.tema = tema; $('#temaSec').value = tema; karAyarla(); }
 $('#temaSec').onchange = e => { tema = e.target.value; temaUygula(); try { localStorage.setItem('tema', tema); } catch {} };
 temaUygula();
 
@@ -997,6 +1069,7 @@ function saatGuncelle() {
   $('#tarih').textContent = d.toLocaleDateString('tr-TR', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
 }
 saatGuncelle(); setInterval(saatGuncelle, 1000);
+{ const d = new Date(); $('#yeniYil').textContent = `Mutlu Yıllar ${d.getMonth() === 0 ? d.getFullYear() : d.getFullYear() + 1}`; }
 // Sunucuya 'pencere hâlâ açık' haberi; kesilince uygulama birkaç dakika içinde kapanır
 setInterval(() => api('ping').catch(() => {}), 20000);
 // Ana ekranda yavaşça yükselen 24 küçük ışık; her biri farklı boyut, hız ve yönde

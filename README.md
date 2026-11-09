@@ -20,7 +20,7 @@ Teknik servis, aksesuar ve cihaz alım-satımı, stok, parçacılar, veresiye ve
 - **Dolar kuru** — TCMB'nin günlük döviz satış kuru otomatik alınır (saatte bir kontrol). İnternet yoksa son kur kullanılır veya elle girilir.
 - **Parça maliyeti** — servis kaydına $ olarak girilen maliyet o günün kuruyla ₺'ye çevrilip gidere yazılır.
 - **Raporlar** — Gelir / Gider ekranında haftalık ve aylık toplamlar, günlük döküm ve alınan parçalar.
-- **3 tema** — Normal, Koyu, Retro (yeşil terminal). Sağ üstten seçilir.
+- **4 tema** — Normal, Koyu, Retro (yeşil terminal) ve kar yağışlı Yılbaşı. Sağ üstten seçilir.
 - **Değiştirilebilir ad** — sol üstteki ada tıklayıp dükkanınızın adını yazın.
 - **Güvenlik** — giriş şifresi, şifreli veritabanı (SQLCipher) ve şifre unutulursa kurtarma kodu.
 - **Yedek** — sağ üstteki **⬇ Yedek** veritabanını ve anahtarını tek zip dosyasında indirir.
